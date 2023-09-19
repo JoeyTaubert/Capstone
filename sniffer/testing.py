@@ -1,8 +1,3 @@
-from datetime import datetime
-from datetime import date
+import os
 
-# datetime object containing current date and time
-now = datetime.now()
-
-print(now)
-
+print(os.system("cd"))
