@@ -22,14 +22,21 @@ fn interface_list() {
     let devices = pcap::Device::list().expect("Failed to grab network interfaces");
     
     // Print network interfaces
-    let mut numbering = 1;
+    //let mut numbering = 1;
     let mut interfaces_vec: Vec<String> = Vec::new();
+    
+    println!("\n-=-=-=-=-=-=-=-=-=-=-=-");
+    println!("    Interface List");
+    println!("-=-=-=-=-=-=-=-=-=-=-=-");
+
     for device in devices{
         interfaces_vec.push(device.name.clone());
 
-        println!("{}. {}", &mut numbering, device.name.clone());
-        numbering += 1;
+        println!("{}", device.name.clone());
+        //println!("{}. {}", &mut numbering, device.name.clone());
+        //numbering += 1;
     }
+    println!("-=-=-=-=-=-=-=-=-=-=-=-\n");
 }
 
 
@@ -50,6 +57,7 @@ fn choose_int() -> String {
     interface_list();
     // Get the choice of interface
     let mut int_choice = String::new();
+    println!("Interface you would like to capture on:");
     io::stdin().read_line(&mut int_choice).expect("Error, no valid interface selected");
 
     return int_choice;
@@ -73,12 +81,26 @@ fn choose_int() -> String {
 fn capture() {
     let int_choice = choose_int();
 
+    // Create HashMap and packet number variable
+    let mut packetmap: HashMap<u32, Packet> = HashMap::new();
+    let mut packet_number = 0u32;
+
+    // Create Capture
     let mut cap = pcap::Capture::from_device(int_choice.as_str().trim_end())
         .expect("Error getting device")
         .promisc(true)        // Passes packets from the interface to the CPU
-        .snaplen(1000)        // Set the capture length
+        .snaplen(128)        // Set the capture length per packet (Would be cool to set this differently depending on protocol)
         .open()     // Activate the capture
         .expect("Error starting capture");    // Catches any error from .open()
+
+    //Put data into hashmap
+    while let Ok(packet) = cap.next_packet() {
+        packet_number += 1;
+        println!("Received packet #{}: {:?}", packet_number, packet);
+
+    }
+    
+
 }
 
 
@@ -101,7 +123,7 @@ fn capture() {
 /// 
 pub struct Packet {
     pub number: u32,
-    pub time: u32,
+    pub time: String,
     pub source_ip: IpAddr,
     pub source_port: u32,
     pub destination_ip: IpAddr,
@@ -115,7 +137,7 @@ pub struct Packet {
 impl Packet {
     pub fn new(
         number: u32, 
-        time: u32, 
+        time: String, 
         source_ip: IpAddr, 
         source_port: u32, 
         destination_ip: IpAddr, 
