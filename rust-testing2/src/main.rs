@@ -1,6 +1,7 @@
 use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, icmp::IcmpPacket, icmpv6::Icmpv6Packet, arp::ArpPacket}, util::MacAddr};
 use pnet::datalink::{self, NetworkInterface, Channel};
 use std::{io, collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
+use chrono::{Utc, Local, DateTime};
 
 // ------------------------
 /// Lists available network interfaces
@@ -155,6 +156,9 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
     let mut source_port: u16 = 0;
     let mut dest_port: u16 = 0;
     let mut protocol = String::new();
+    let length = packet_data.packet().len();
+    let timestamp = Utc::now();
+    let ppayload: Vec<u8> = packet_data.payload().to_vec();
 
     // 'match' statement to differentiate between IPv4 header and IPv6
     match packet_data.get_ethertype() {
@@ -248,8 +252,9 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
             eprintln!("[+]INFO: Unsupported ethertype: {:?}", packet_data.get_ethertype());
         }
     };
-    println!("Number: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {}", 
-            &number, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port);
+    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", 
+            &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, 
+            &source_port, &dest_ip, &dest_port, &length, &ppayload);
 }
 
 // ------------------------
@@ -321,6 +326,7 @@ fn main() {
     // Call interface_fn() and assign to variable
     let interface_checked = interface_fn();
     
+    // Initialize variables that need a globalized scope
     let mut number = 0;
 
     // Call capture() passing the interface
