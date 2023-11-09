@@ -143,7 +143,8 @@ fn capture(interface: String, number: &mut i32) {
 /// Parses each packet of the capture and grabs critical information
 /// 
 /// # Arguments
-/// packet_data: &EthernetPacket - 
+/// packet_data: &EthernetPacket - A reference to packet data from the pnet::EthernetPacket method
+/// number - Usually comes from an outer loop where each iteration increments the number variable by one
 /// 
 /// # Returns
 /// N/A
@@ -264,13 +265,13 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
 /// 
 /// * number - Packet number in the capture
 /// * time - Time from the start of the capture
+/// * protocol - The highest level protocol used for the packet
 /// * source_mac - Source MAC address
 /// * source_ip - Source IP address
 /// * source_port - Source port
 /// * dest_mac - Destination MAC address
 /// * dest_ip - Destintation IP address
 /// * dest_port - Destination port
-/// * protocol - The highest level protocol used for the packet
 /// * length - Size of the packet, in bytes
 /// * payload - Summary of the fields of the highest layer protocol
 /// 
@@ -280,13 +281,13 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
 pub struct PacketStruct {
     pub number: u32,
     pub time: String,
+    pub protocol: String,
     pub source_mac: MacAddr,
     pub source_ip: IpAddr,
     pub source_port: u16,
     pub dest_mac: MacAddr,
     pub dest_ip: IpAddr,
     pub dest_port: u16,
-    pub protocol: String,
     pub length: u32,
     pub payload: String
 }
@@ -296,26 +297,26 @@ impl PacketStruct {
     pub fn new(
         number: u32, 
         time: String, 
+        protocol: String, 
         source_mac: MacAddr,
         source_ip: IpAddr, 
         source_port: u16, 
         dest_mac: MacAddr,
         dest_ip: IpAddr, 
         dest_port: u16,
-        protocol: String, 
         length: u32, 
         payload: String
         ) -> Self {
             PacketStruct {
                 number, 
                 time, 
+                protocol, 
                 source_mac,
                 source_ip, 
                 source_port,
                 dest_mac, 
                 dest_ip, 
                 dest_port, 
-                protocol, 
                 length, 
                 payload,
             }
