@@ -1,6 +1,6 @@
 use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, icmp::IcmpPacket, icmpv6::Icmpv6Packet, arp::ArpPacket}, util::MacAddr};
 use pnet::datalink::{self, NetworkInterface, Channel};
-use std::{io, collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
+use std::{io::Write, collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::File};
 use chrono::{Utc, Local, DateTime};
 
 // ------------------------
@@ -51,7 +51,7 @@ fn choose_int() -> String {
     println!("[+] Interface you would like to capture on:");
 
     // Record user input
-    io::stdin().read_line(&mut int_choice).expect("[-]ERROR: Error, no valid interface selected");
+    std::io::stdin().read_line(&mut int_choice).expect("[-]ERROR: Error, no valid interface selected");
 
     // Some type-casting
     let int_choice2: &str = int_choice.as_str().trim_end();
@@ -256,9 +256,17 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
             eprintln!("[-]ERROR: Unsupported ethertype: {:?}", packet_data.get_ethertype());
         }
     };
-    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", 
-    &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
+    // Write data to file, one line = complete data. 
+    let mut cfile = File::create("captures/CaptureTime.txt");
+
+        let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+        writeln!(cfile, "{}", data_string)?;
+
+    //Ok(())
+
+    /* 
     let ipacket = PacketStruct {
         number,
         time: timestamp,
@@ -272,7 +280,7 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
         length,
         payload: ppayload
     };
-
+*/
 }
 
 // ------------------------
@@ -295,6 +303,8 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
 /// # impl's
 /// 
 /// * new() - Takes all fields as parameters, returns a PacketStruct type. Used to create a new instance of the struct.
+
+/*
 pub struct PacketStruct {
     pub number: i32,
     pub time: DateTime<Utc>,
@@ -307,7 +317,7 @@ pub struct PacketStruct {
     pub dest_port: u16,
     pub length: usize,
     pub payload: Vec<u8>
-}
+}*/
 /* 
 /// Constructor for 'PacketStruct'
 impl PacketStruct {
@@ -353,7 +363,7 @@ fn main() {
     loop {
         let mut packet_choice_string = String::new();
         println!("\n[+] Numer of packets to be captured: ");
-        io::stdin()
+        std::io::stdin()
             .read_line(&mut packet_choice_string)
             .expect("[-]ERROR: Invalid input for packet number");
 
