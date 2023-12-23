@@ -123,7 +123,7 @@ fn capture(interface: String, number: &mut i32, num_of_packets: i32) {
                         // Store the etherenet frame in variable
                         let packet = EthernetPacket::new(packet).unwrap();
                         // Pass the packet data to the parse_packet()
-                        parse_packet(&packet, &mut number);
+                        parse_packet(&packet, number);
                     },
                     // If there is an error accessing the next ethernet frame, print an error to the error log
                     Err(e) => {
@@ -151,7 +151,7 @@ fn capture(interface: String, number: &mut i32, num_of_packets: i32) {
 /// 
 /// # Returns
 /// N/A
-fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
+fn parse_packet(packet_data: &EthernetPacket, number: i32) {
     // Initialize all needed fields
     let source_mac: MacAddr = packet_data.get_source(); // We already have direct access to layer 2 info, so assign these variables
     let dest_mac: MacAddr = packet_data.get_destination();
@@ -256,7 +256,22 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
             eprintln!("[-]ERROR: Unsupported ethertype: {:?}", packet_data.get_ethertype());
         }
     };
-    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", 
+    &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+
+    let ipacket = PacketStruct {
+        number,
+        time: timestamp,
+        protocol,
+        source_mac,
+        source_ip,
+        source_port,
+        dest_mac,
+        dest_ip,
+        dest_port,
+        length,
+        payload: ppayload
+    };
 
 }
 
@@ -281,8 +296,8 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
 /// 
 /// * new() - Takes all fields as parameters, returns a PacketStruct type. Used to create a new instance of the struct.
 pub struct PacketStruct {
-    pub number: u32,
-    pub time: String,
+    pub number: i32,
+    pub time: DateTime<Utc>,
     pub protocol: String,
     pub source_mac: MacAddr,
     pub source_ip: IpAddr,
@@ -290,15 +305,15 @@ pub struct PacketStruct {
     pub dest_mac: MacAddr,
     pub dest_ip: IpAddr,
     pub dest_port: u16,
-    pub length: u32,
-    pub payload: String
+    pub length: usize,
+    pub payload: Vec<u8>
 }
-
+/* 
 /// Constructor for 'PacketStruct'
 impl PacketStruct {
     pub fn new(
-        number: u32, 
-        time: String, 
+        number: i32, 
+        time: DateTime<Utc>, 
         protocol: String, 
         source_mac: MacAddr,
         source_ip: IpAddr, 
@@ -306,8 +321,8 @@ impl PacketStruct {
         dest_mac: MacAddr,
         dest_ip: IpAddr, 
         dest_port: u16,
-        length: u32, 
-        payload: String
+        length: usize, 
+        payload: Vec<u8>
         ) -> Self {
             PacketStruct {
                 number, 
@@ -324,6 +339,7 @@ impl PacketStruct {
             }
         }
 }
+*/
 
 fn main() {
     // Call interface_fn() and assign to variable
