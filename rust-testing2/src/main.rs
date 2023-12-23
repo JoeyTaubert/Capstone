@@ -14,10 +14,9 @@ use chrono::{Utc, Local, DateTime};
 /// 
 fn interface_list() -> Vec<String> {
     // Grab network interfaces
-    let devices = pcap::Device::list().expect("Failed to grab network interfaces");
+    let devices = pcap::Device::list().expect("[-]ERROR: Failed to grab network interfaces");
     
     // Print network interfaces
-    //let mut numbering = 1;
     let mut interfaces_vec: Vec<String> = Vec::new();
     
     println!("\n-=-=-=-=-=-=-=-=-=-=-=-");
@@ -26,14 +25,11 @@ fn interface_list() -> Vec<String> {
 
     for device in devices{
         interfaces_vec.push(device.name.clone());
-
         println!("{}", device.name.clone());
-        //println!("{}. {}", &mut numbering, device.name.clone());
-        //numbering += 1;
     }
     println!("-=-=-=-=-=-=-=-=-=-=-=-\n");
 
-    interfaces_vec //Returns interfaces_vec
+    interfaces_vec //Implicit return for interfaces_vec
 }
 
 
@@ -49,11 +45,13 @@ fn interface_list() -> Vec<String> {
 fn choose_int() -> String {
     // Call interface_list()
     interface_list();
+
     // Get the choice of interface
     let mut int_choice = String::new();
-    println!("Interface you would like to capture on:");
+    println!("[+] Interface you would like to capture on:");
+
     // Record user input
-    io::stdin().read_line(&mut int_choice).expect("Error, no valid interface selected");
+    io::stdin().read_line(&mut int_choice).expect("[-]ERROR: Error, no valid interface selected");
 
     // Some type-casting
     let int_choice2: &str = int_choice.as_str().trim_end();
@@ -77,17 +75,18 @@ fn interface_fn() -> String {
     let mut interface_input: String = choose_int();
     let all_interfaces = interface_list();
 
-    // Loop through all interfaces
+    // Begin "infinite" loop
     loop {
-        // If the input matches a interface in the list, write it to int_safe and break
-        if all_interfaces.contains(&interface_input) {
-            break;
-        // else, try again
-        } else {
-            println!("Interface '{}' not found, please try again.", &interface_input);
-            interface_input = choose_int();
+        match all_interfaces.contains(&interface_input) {
+            true => break, // If the interface is found, break the loop
+            false => {
+                // If not found, print a message and ask for input again
+                println!("ERROR[-]: Interface '{}' not found, please try again.", &interface_input);
+                interface_input = choose_int();
+            }
         }
     }
+
     return interface_input;
 }
 
@@ -100,8 +99,10 @@ fn interface_fn() -> String {
 /// 
 /// # Returns
 /// N/A
-fn capture(interface: String, number: &mut i32) {
-    println!("Capturing on {}...\n", interface);
+fn capture(interface: String, number: &mut i32, num_of_packets: i32) {
+    println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
+
+    let calc_num_of_packets = num_of_packets - 1;
     
     let interfaces = datalink::interfaces();
     let mut number = 0;
@@ -109,12 +110,12 @@ fn capture(interface: String, number: &mut i32) {
     let interface_dl = interfaces.into_iter()
                                                 .filter(|iface: &NetworkInterface| iface.name == interface)
                                                 .next()
-                                                .expect("Error getting interface");
+                                                .expect("[-]ERROR: Error getting interface");
 
     // Handling packets so that only packets with Ethernet frames are processed further
     match datalink::channel(&interface_dl, Default::default()) {
         Ok(Channel::Ethernet(_, mut rx)) => {
-            loop {
+            while calc_num_of_packets >= number {
                 number += 1;
                 // Calls the next ethernet frame
                 match rx.next() {
@@ -126,16 +127,18 @@ fn capture(interface: String, number: &mut i32) {
                     },
                     // If there is an error accessing the next ethernet frame, print an error to the error log
                     Err(e) => {
-                        eprintln!("[+]INFO: An error occured while reading {}", e);
+                        eprintln!("[-]ERROR: An error occured while reading {}", e);
                     }
                 }
             }
         },
         // If a packet comes in with an unexpected header layout, print an error to the error log
-        Ok(_) => eprintln!("[+]INFO: Unsupported channel type for packet, aka not Ethernet channel"),
+        Ok(_) => eprintln!("[-]ERROR: Unsupported channel type for packet, aka not Ethernet channel"),
         // Handles generic Err
-        Err(e) => eprintln!("[+]INFO: An error occured while creating the datalink channel: {}", e),
+        Err(e) => eprintln!("[-]ERROR: An error occured while creating the datalink channel: {}", e),
         }
+
+        println!("[+]INFO: Finished capturing {num_of_packets} packets!")
     }
 
 
@@ -197,7 +200,7 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
                     },
                     // For any other 'match' condition, print an error to the error log
                     _ => {
-                        eprintln!("[+]INFO: Unsupported next level protocol: {}", header.get_next_level_protocol());
+                        eprintln!("[-]ERROR: Unsupported next level protocol: {}", header.get_next_level_protocol());
                     }
                 }
             } else {
@@ -235,7 +238,7 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
                         protocol = String::from("ICMPv6"); 
                     },
                     _ => {
-                        eprintln!("[+]INFO: Unsupported next level protocol: {}", header.get_next_header());
+                        eprintln!("[-]ERROR: Unsupported next level protocol: {}", header.get_next_header());
                     }
                 }
             } else {
@@ -250,12 +253,11 @@ fn parse_packet(packet_data: &EthernetPacket, number: &mut i32) {
             }
         },
         _ => {
-            eprintln!("[+]INFO: Unsupported ethertype: {:?}", packet_data.get_ethertype());
+            eprintln!("[-]ERROR: Unsupported ethertype: {:?}", packet_data.get_ethertype());
         }
     };
-    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", 
-            &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, 
-            &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+
 }
 
 // ------------------------
@@ -330,8 +332,29 @@ fn main() {
     // Initialize variables that need a globalized scope
     let mut number = 0;
 
+    let mut packet_choice_i32: i32 = 0;
+    // How many packets to be captured
+    loop {
+        let mut packet_choice_string = String::new();
+        println!("\n[+] Numer of packets to be captured: ");
+        io::stdin()
+            .read_line(&mut packet_choice_string)
+            .expect("[-]ERROR: Invalid input for packet number");
+
+        // Check if user input is an integer, continue
+        match packet_choice_string.trim().parse::<i32>(){
+            Ok(num) => {
+                packet_choice_i32 = num;
+                break
+            }
+            Err(_) => {
+                eprintln!("\n[-]ERROR: Invalid input for number of packets, '{}' not an integer.", packet_choice_string.trim());
+            },
+        };
+    }
+
     // Call capture() passing the interface
-    capture(interface_checked, &mut number);
+    capture(interface_checked, &mut number, packet_choice_i32);
 }
 
 
