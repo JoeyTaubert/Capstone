@@ -99,7 +99,7 @@ fn interface_fn() -> String {
 /// 
 /// # Returns
 /// N/A
-fn capture(interface: String, number: &mut i32, num_of_packets: i32) {
+fn capture(interface: String, num_of_packets: i32) {
     println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
 
     let calc_num_of_packets = num_of_packets - 1;
@@ -281,9 +281,6 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
 fn main() {
     // Call interface_fn() and assign to variable
     let interface_checked = interface_fn();
-    
-    // Initialize variables that need a globalized scope
-    let mut number = 0;
 
     let mut packet_choice_i32: i32 = 0;
     // How many packets to be captured
@@ -307,7 +304,7 @@ fn main() {
     }
 
     // Call capture() passing the interface
-    capture(interface_checked, &mut number, packet_choice_i32);
+    capture(interface_checked, packet_choice_i32);
 }
 
 
