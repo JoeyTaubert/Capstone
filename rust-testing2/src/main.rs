@@ -1,6 +1,6 @@
 use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, icmp::IcmpPacket, icmpv6::Icmpv6Packet, arp::ArpPacket}, util::MacAddr};
 use pnet::datalink::{self, NetworkInterface, Channel};
-use std::{io::Write, collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::File};
+use std::{io::Write, collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::{File, OpenOptions}};
 use chrono::{Utc, Local, DateTime};
 
 // ------------------------
@@ -259,97 +259,24 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
     println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
     // Write data to file, one line = complete data. 
-    let mut cfile = File::create("captures/CaptureTime.txt");
+   
+    let mut cfile = match OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("CaptureTime.txt") {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
+                return;
+            },
+        }; 
 
-        let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
-        writeln!(cfile, "{}", data_string)?;
 
-    //Ok(())
-
-    /* 
-    let ipacket = PacketStruct {
-        number,
-        time: timestamp,
-        protocol,
-        source_mac,
-        source_ip,
-        source_port,
-        dest_mac,
-        dest_ip,
-        dest_port,
-        length,
-        payload: ppayload
-    };
-*/
+    let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    writeln!(cfile, "{}", data_string)
+        .expect("[-]ERROR: Error writing to file.");
+    
 }
-
-// ------------------------
-/// The "Packet" struct represents the critical data within a single packet of network traffic
-/// 
-/// # Fields
-/// 
-/// * number - Packet number in the capture
-/// * time - Time from the start of the capture
-/// * protocol - The highest level protocol used for the packet
-/// * source_mac - Source MAC address
-/// * source_ip - Source IP address
-/// * source_port - Source port
-/// * dest_mac - Destination MAC address
-/// * dest_ip - Destintation IP address
-/// * dest_port - Destination port
-/// * length - Size of the packet, in bytes
-/// * payload - Summary of the fields of the highest layer protocol
-/// 
-/// # impl's
-/// 
-/// * new() - Takes all fields as parameters, returns a PacketStruct type. Used to create a new instance of the struct.
-
-/*
-pub struct PacketStruct {
-    pub number: i32,
-    pub time: DateTime<Utc>,
-    pub protocol: String,
-    pub source_mac: MacAddr,
-    pub source_ip: IpAddr,
-    pub source_port: u16,
-    pub dest_mac: MacAddr,
-    pub dest_ip: IpAddr,
-    pub dest_port: u16,
-    pub length: usize,
-    pub payload: Vec<u8>
-}*/
-/* 
-/// Constructor for 'PacketStruct'
-impl PacketStruct {
-    pub fn new(
-        number: i32, 
-        time: DateTime<Utc>, 
-        protocol: String, 
-        source_mac: MacAddr,
-        source_ip: IpAddr, 
-        source_port: u16, 
-        dest_mac: MacAddr,
-        dest_ip: IpAddr, 
-        dest_port: u16,
-        length: usize, 
-        payload: Vec<u8>
-        ) -> Self {
-            PacketStruct {
-                number, 
-                time, 
-                protocol, 
-                source_mac,
-                source_ip, 
-                source_port,
-                dest_mac, 
-                dest_ip, 
-                dest_port, 
-                length, 
-                payload,
-            }
-        }
-}
-*/
 
 fn main() {
     // Call interface_fn() and assign to variable
