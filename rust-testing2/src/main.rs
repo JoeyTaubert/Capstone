@@ -86,7 +86,6 @@ fn interface_fn() -> String {
             }
         }
     }
-
     return interface_input;
 }
 
@@ -95,10 +94,13 @@ fn interface_fn() -> String {
 /// Starts a network capture
 /// 
 /// # Arguments
-/// * interface: String - 
+/// * interface: String - The selected interface (see main())
+/// * num_of_packets: i32 - The provided number of packets that should be captured
 /// 
 /// # Returns
 /// N/A
+/// 
+/// * Outputs a file name YYYY-MM-DD-HH-MM-SS-Capture.txt
 fn capture(interface: String, num_of_packets: i32) {
     println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
 
@@ -107,7 +109,7 @@ fn capture(interface: String, num_of_packets: i32) {
     // Set up timestamp for file creation
     let rnow = Utc::now();
     let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
-    
+
     // Grab file handle
     let mut cfile = match OpenOptions::new()
     .append(true)
@@ -115,7 +117,7 @@ fn capture(interface: String, num_of_packets: i32) {
     .open(format!("caps/{}-Capture.txt", rnowformatted)) {
         Ok(file) => file,
         Err(e) => {
-            eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
+            eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. Maybe the directory 'caps' is missing? {}", e);
             return;
         },
     }; 
@@ -283,27 +285,8 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
     //println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
     // Return an instance of PacketStruct so that the packet can be written to a file
-    return build_packet(number, timestamp, protocol, source_mac,  source_ip, source_port, dest_mac, dest_ip, dest_port, length, ppayload);
+    return PacketStruct::new(number, timestamp, protocol, source_mac,  source_ip, source_port, dest_mac, dest_ip, dest_port, length, ppayload);
     
-}
-
-///
-///
-///
-fn build_packet(number: i32, time: DateTime<Utc>, protocol: String, source_mac: MacAddr, source_ip: IpAddr, source_port: u16, dest_mac: MacAddr, dest_ip: IpAddr, dest_port: u16, length: usize, payload: Vec<u8>) -> PacketStruct {
-    PacketStruct {
-        number,
-        time,
-        protocol,
-        source_mac,
-        source_ip,
-        source_port,
-        dest_mac,
-        dest_ip,
-        dest_port,
-        length,
-        payload,
-    }
 }
 
 // ------------------------
@@ -340,7 +323,7 @@ pub struct PacketStruct {
     pub length: usize,
     pub payload: Vec<u8>
 }
-/* 
+
 /// Constructor for 'PacketStruct'
 impl PacketStruct {
     pub fn new(
@@ -370,8 +353,7 @@ impl PacketStruct {
                 payload,
             }
         }
-} */
-
+}
 
 fn main() {
     // Call interface_fn() and assign to variable
