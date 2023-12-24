@@ -123,7 +123,28 @@ fn capture(interface: String, num_of_packets: i32) {
                         // Store the etherenet frame in variable
                         let packet = EthernetPacket::new(packet).unwrap();
                         // Pass the packet data to the parse_packet()
-                        parse_packet(&packet, number);
+                        let packet_data: PacketStruct = parse_packet(&packet, number);
+                            
+                        // Set up timestamp for file creation
+                        let rnow = Utc::now();
+                        let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
+
+                        // Grab file handle
+                        let mut cfile = match OpenOptions::new()
+                            .append(true)
+                            .create(true)
+                            .open(format!("caps/{}-Capture.txt", rnowformatted)) {
+                                Ok(file) => file,
+                                Err(e) => {
+                                    eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
+                                    return;
+                                },
+                            }; 
+                        // Write to the file
+                        let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
+                        writeln!(cfile, "{}", data_string)
+                            .expect("[-]ERROR: Error writing to file.");
+
                     },
                     // If there is an error accessing the next ethernet frame, print an error to the error log
                     Err(e) => {
@@ -151,7 +172,7 @@ fn capture(interface: String, num_of_packets: i32) {
 /// 
 /// # Returns
 /// N/A
-fn parse_packet(packet_data: &EthernetPacket, number: i32) {
+fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
     // Initialize all needed fields
     let source_mac: MacAddr = packet_data.get_source(); // We already have direct access to layer 2 info, so assign these variables
     let dest_mac: MacAddr = packet_data.get_destination();
@@ -256,27 +277,100 @@ fn parse_packet(packet_data: &EthernetPacket, number: i32) {
             eprintln!("[-]ERROR: Unsupported ethertype: {:?}", packet_data.get_ethertype());
         }
     };
-    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    
+    //Format: 
+    //println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
-    // Write data to file, one line = complete data. 
-   
-    let mut cfile = match OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("CaptureTime.txt") {
-            Ok(file) => file,
-            Err(e) => {
-                eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
-                return;
-            },
-        }; 
-
-
-    let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
-    writeln!(cfile, "{}", data_string)
-        .expect("[-]ERROR: Error writing to file.");
+    // Return an instance of PacketStruct so that the packet can be written to a file
+    return build_packet(number, timestamp, protocol, source_mac,  source_ip, source_port, dest_mac, dest_ip, dest_port, length, ppayload);
     
 }
+
+///
+///
+///
+fn build_packet(number: i32, time: DateTime<Utc>, protocol: String, source_mac: MacAddr, source_ip: IpAddr, source_port: u16, dest_mac: MacAddr, dest_ip: IpAddr, dest_port: u16, length: usize, payload: Vec<u8>) -> PacketStruct {
+    PacketStruct {
+        number,
+        time,
+        protocol,
+        source_mac,
+        source_ip,
+        source_port,
+        dest_mac,
+        dest_ip,
+        dest_port,
+        length,
+        payload,
+    }
+}
+
+// ------------------------
+/// The "Packet" struct represents the critical data within a single packet of network traffic
+/// 
+/// # Fields
+/// 
+/// * number - Packet number in the capture
+/// * time - Time from the start of the capture
+/// * protocol - The highest level protocol used for the packet
+/// * source_mac - Source MAC address
+/// * source_ip - Source IP address
+/// * source_port - Source port
+/// * dest_mac - Destination MAC address
+/// * dest_ip - Destintation IP address
+/// * dest_port - Destination port
+/// * length - Size of the packet, in bytes
+/// * payload - Summary of the fields of the highest layer protocol
+/// 
+/// # impl's
+/// 
+/// * new() - Takes all fields as parameters, returns a PacketStruct type. Used to create a new instance of the struct.
+pub struct PacketStruct {
+    // Could implement lifetimes here if I would like to take in references, like &i32 and &DateTime<Utc>
+    pub number: i32,
+    pub time: DateTime<Utc>,
+    pub protocol: String,
+    pub source_mac: MacAddr,
+    pub source_ip: IpAddr,
+    pub source_port: u16,
+    pub dest_mac: MacAddr,
+    pub dest_ip: IpAddr,
+    pub dest_port: u16,
+    pub length: usize,
+    pub payload: Vec<u8>
+}
+/* 
+/// Constructor for 'PacketStruct'
+impl PacketStruct {
+    pub fn new(
+        number: i32, 
+        time: DateTime<Utc>, 
+        protocol: String, 
+        source_mac: MacAddr,
+        source_ip: IpAddr, 
+        source_port: u16, 
+        dest_mac: MacAddr,
+        dest_ip: IpAddr, 
+        dest_port: u16,
+        length: usize, 
+        payload: Vec<u8>
+        ) -> Self {
+            PacketStruct {
+                number, 
+                time, 
+                protocol, 
+                source_mac,
+                source_ip, 
+                source_port,
+                dest_mac, 
+                dest_ip, 
+                dest_port, 
+                length, 
+                payload,
+            }
+        }
+} */
+
 
 fn main() {
     // Call interface_fn() and assign to variable
@@ -306,7 +400,3 @@ fn main() {
     // Call capture() passing the interface
     capture(interface_checked, packet_choice_i32);
 }
-
-
-
-
