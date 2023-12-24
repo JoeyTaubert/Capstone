@@ -103,6 +103,22 @@ fn capture(interface: String, num_of_packets: i32) {
     println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
 
     let calc_num_of_packets = num_of_packets - 1;
+
+    // Set up timestamp for file creation
+    let rnow = Utc::now();
+    let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
+    
+    // Grab file handle
+    let mut cfile = match OpenOptions::new()
+    .append(true)
+    .create(true)
+    .open(format!("caps/{}-Capture.txt", rnowformatted)) {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
+            return;
+        },
+    }; 
     
     let interfaces = datalink::interfaces();
     let mut number = 0;
@@ -124,22 +140,7 @@ fn capture(interface: String, num_of_packets: i32) {
                         let packet = EthernetPacket::new(packet).unwrap();
                         // Pass the packet data to the parse_packet()
                         let packet_data: PacketStruct = parse_packet(&packet, number);
-                            
-                        // Set up timestamp for file creation
-                        let rnow = Utc::now();
-                        let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
 
-                        // Grab file handle
-                        let mut cfile = match OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .open(format!("caps/{}-Capture.txt", rnowformatted)) {
-                                Ok(file) => file,
-                                Err(e) => {
-                                    eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. {}", e);
-                                    return;
-                                },
-                            }; 
                         // Write to the file
                         let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
                         writeln!(cfile, "{}", data_string)
