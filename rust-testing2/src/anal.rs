@@ -2,26 +2,55 @@ use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::Udp
 use pnet::datalink::{self, NetworkInterface, Channel};
 use std::{io::{Write, self, BufRead, BufReader}, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::{OpenOptions, File}};
 use chrono::{Utc, DateTime};
-mod cap;
 
-pub fn open_file() -> io::Resutlt<()> {
+///
+///
+pub fn open_file() -> Result<File, io::Error> {
 
-    println!("What is the filename? (YYYY-MM-DD-HH-MM-SS-Capture.txt) ");
-    let mut filename = std::io::stdin().read_line(&mut filename)
+    //Get the filename from the user
+    println!("\nWhat is the filename? (YYYY-MM-DD-HH-MM-SS-Capture.txt) ");
+
+    let mut filename = String::new();
+    std::io::stdin().read_line(&mut filename)
         .expect("[-]ERROR: Failed to read line.");
-    let mut filepath = String::new();
-    let dir = String::from("caps/");
 
-    filepath = format!("{}{}", dir, filename);
+    let filename = filename.trim();
+
+    // Build the path to the file
+    let dir = "caps/";
+    let filepath = format!("{}{}", dir, filename);
     
-    let cap_data = fs::read_to_string(filepath).expect("[-]ERROR: Could not read file to string.")?;
+    // Obtain File Handle
+    File::open(filepath) // Implicit return
+}
 
-    println!("File contents:\n()", cap_data);
+///
+/// 
+pub fn parsing(file_handle: File) -> Vec<String> {
+    let mut cap_data: Vec<String> = Vec::new();
+    let breader = BufReader::new(file_handle);
 
-    Ok(())
+    for line in breader.lines() {
+        match line {
+            Ok(l) => cap_data.push(l),
+            Err(e) => eprintln!("[-]ERROR: Failed to read a line from file: {}", e),
+        }
+    }
+
+    return cap_data
 }
 
 pub fn main() {
-    let data = open_file();
-    data;
+
+    let mut data: Vec<String> = Vec::new(); 
+
+    match open_file() {
+        Ok(fhandle) => data = parsing(fhandle),
+        Err(e) => {
+            eprintln!("[-]ERROR: Failed to open file; {}", e);
+            return 
+        },
+    };
+
+    println!("{:?}", data)
 }
