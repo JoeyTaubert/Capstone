@@ -68,7 +68,7 @@ pub fn choose_int() -> String {
 /// * None
 /// 
 /// # Returns
-/// * int_safe: String - The system interface that should be captured on
+/// * interface_input: String - The system interface that should be captured on
 /// 
 pub fn interface_fn() -> String {
     // Calls choose_int() and interface_list()
@@ -110,7 +110,10 @@ pub fn capture(interface: String, num_of_packets: i32) {
     let rnow = Utc::now();
     let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
 
+    //// Perform a check if the file exists (is this the right place?) if not, create the file and write the header.
+
     // Grab file handle
+    //// Use Path/PathBuf for this? 
     let mut cfile = match OpenOptions::new()
     .append(true)
     .create(true)

@@ -3,27 +3,6 @@ use pnet::datalink::{self, NetworkInterface, Channel};
 use std::{io::{Write, self, BufRead, BufReader}, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::{OpenOptions, File}};
 use chrono::{Utc, DateTime};
 
-///
-///
-pub fn open_file() -> Result<File, io::Error> {
-
-    //Get the filename from the user
-    println!("\nWhat is the filename? (YYYY-MM-DD-HH-MM-SS-Capture.txt) ");
-
-    let mut filename = String::new();
-    std::io::stdin().read_line(&mut filename)
-        .expect("[-]ERROR: Failed to read line.");
-
-    let filename = filename.trim();
-
-    // Build the path to the file
-    let dir = "caps/";
-    let filepath = format!("{}{}", dir, filename);
-    
-    // Obtain File Handle
-    File::open(filepath) // Implicit return
-}
-
 /// Parse for data that will be used to compute metrics
 /// 
 /// Metrics:
@@ -49,28 +28,46 @@ pub fn parsing(file_handle: File) -> Vec<String> {
 
 }
 
-pub fn choose() {
-    println!("\n[+] Source data from a file (f) or timeframe (t): ");
 
-    let mut dchoice = String::new();
-    std::io::stdin().read_line(&mut dchoice).expect("[-]ERROR: Error reading user input.");
+    //Build path using Path and/or PathBuf (need to append cap/ directory on the beginning of file name)
 
-    
-    if dchoice.trim().starts_with("f") {
+pub fn file_compute() {
         let mut data_from_file: Vec<String> = Vec::new(); 
         match open_file() {
-            Ok(fhandle) => {
-                data_from_file = parsing(fhandle)
-            },
+            Ok(fhandle) => 
+                println!("{:?}", fhandle), // fhandle contains the following data when supplied a valid filename:
+// File { fd: 3, path: "/home/joey/Capstone/rust-testing2/caps/2023-12-24_04-28-40-Capture.txt", read: true, write: false }
             Err(e) => {
                 eprintln!("[-]ERROR: Failed to open file; {}", e);
-                return 
             },
         };
+    }
     // Option for parsing via timeframe. This will take user input for start time/date and end time/date (UTC), and
     // open all files that occur within the timeframe, it will then parse through all packets with a timestamp 
     // within the range. For now I will just be using the file option for testing. 
-    } else if dchoice.trim().starts_with("t") {
+
+///
+///
+pub fn open_file() -> Result<File, io::Error> {
+
+    //Get the filename from the user
+    println!("\nWhat is the filename? (YYYY-MM-DD-HH-MM-SS-Capture.txt) ");
+
+    let mut filename = String::new();
+    std::io::stdin().read_line(&mut filename)
+        .expect("[-]ERROR: Failed to read line.");
+
+    let filename = filename.trim();
+
+    // Build the path to the file (Use Path/PathBuf for this???)
+    let dir = "caps/";
+    let filepath = format!("{}{}", dir, filename);
+    
+    // Obtain File Handle
+    File::open(filepath) // Implicit return
+}
+
+pub fn timestamp_compute() {
         println!("\nUTC Start Date (YYYY-MM-DD): ");
         let mut date1 = String::new(); 
         std::io::stdin().read_line(&mut date1).expect("[-]ERROR: Error reading user input ");
@@ -92,11 +89,20 @@ pub fn choose() {
         // would be in the range) and the last applicable packet in the last file (last file where the name is in the
         // range).  
         
-    } else {
-        eprintln!("[-]ERROR: Invalid input for data source")
     }
-}
 
 pub fn main() {
-    choose();
+    println!("\n[+] Source data from a file (f) or timeframe (t): ");
+
+    let mut dchoice = String::new();
+    std::io::stdin().read_line(&mut dchoice).expect("[-]ERROR: Error reading user input.");
+    
+    if dchoice.trim().starts_with("f") {
+        file_compute()
+    } else if dchoice.trim().starts_with("t") {
+        timestamp_compute()
+    } else {
+        eprintln!("[-]ERROR: Invalid user input.")
+    }
+
 }
