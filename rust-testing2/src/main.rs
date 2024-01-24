@@ -1,5 +1,5 @@
 mod cap; 
-mod anal;
+mod analysis;
 mod auth;
 mod ml;
 
