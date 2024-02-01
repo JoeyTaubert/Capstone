@@ -6,7 +6,7 @@ mod ml;
 fn main () {
     //cap::main();
 
-    //anal::main();
+    //analysis::main();
 
     //auth::main();
 
