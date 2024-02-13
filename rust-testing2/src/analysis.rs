@@ -42,9 +42,6 @@ pub fn file_compute() {
             },
         };
     }
-    // Option for parsing via timeframe. This will take user input for start time/date and end time/date (UTC), and
-    // open all files that occur within the timeframe, it will then parse through all packets with a timestamp 
-    // within the range. For now I will just be using the file option for testing. 
 
 ///
 ///
@@ -67,6 +64,9 @@ pub fn open_file() -> Result<File, io::Error> {
     File::open(filepath) // Implicit return
 }
 
+/// Option for parsing via timeframe. This will take user input for start time/date and end time/date (UTC), and
+/// open all files that occur within the timeframe, it will then parse through all packets with a timestamp 
+/// within the range. For now I will just be using the file option for testing. 
 pub fn timestamp_compute() {
         println!("\nUTC Start Date (YYYY-MM-DD): ");
         let mut date1 = String::new(); 

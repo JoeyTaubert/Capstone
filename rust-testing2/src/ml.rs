@@ -284,7 +284,7 @@ impl NNetwork {
 }
 
 pub fn main() {
-    // XOR POC
+    // XOR PoC
     let inputs = vec![
         vec![0.0, 0.0],
         vec![0.0, 1.0],
@@ -292,12 +292,15 @@ pub fn main() {
         vec![1.0, 1.0],
     ];
 
+    // target values
     let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
 
+    // train network
     let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
 
     nnetwork.train(inputs, targets, 10000);
 
+    // test the neural network
     println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 0.0])));
 	println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 1.0])));
 	println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 0.0])));
