@@ -231,7 +231,7 @@ impl NNetwork {
     }
 
     pub fn feed_forward(&mut self, inputs: Matrix) -> Matrix {
-        assert!(self.layers[0] == inputs.data.len(), "Invalid number of inputs");
+        assert!(self.layers[0] == inputs.data.len(), "Invalid number of inputs to feed forward");
 
         // Holds values for next layer of neural network
         let mut current = inputs;
@@ -260,7 +260,7 @@ impl NNetwork {
         // Then, multiply neurons by our error to update them proportionately.
         // (The higher the gradient, the more responsible that neuron is for the incorrect output)
         for i in (0..self.layers.len() - 1).rev() {
-            gradients = gradients.elementwise_multiply(&errors).map(|x| x * 0.5);
+            gradients = gradients.elementwise_multiply(&errors).map(|x| x * 0.5); // Step size calculation for gradient descent
 
             self.weights[i] = self.weights[i].addm(&gradients.dot_multiply(&self.data[i].transpose()));
             self.biases[i] = self.biases[i].addm(&gradients);
@@ -284,25 +284,47 @@ impl NNetwork {
 }
 
 pub fn main() {
-    // XOR PoC
+    // Echo Request/Reply PoC
     let inputs = vec![
-        vec![0.0, 0.0],
-        vec![0.0, 1.0],
-        vec![1.0, 0.0],
-        vec![1.0, 1.0],
+        vec![8.0, 0.0], //x0023 has the code for echo request/reply. Request is 08 and replies are 00
+        vec![0.0, 8.0], // Could extend these into a list to include sequence numbers as well
     ];
 
     // target values
-    let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
+    let targets = vec![vec![8.0], vec![0.0]];
 
     // train network
     let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
 
     nnetwork.train(inputs, targets, 10000);
 
-    // test the neural network
-    println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 0.0])));
-	println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 1.0])));
-	println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 0.0])));
-	println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 1.0])));
+    // test the neural network with the following inputs
+    println!("");
+    println!("0 = Echo REPLY");
+    println!("1 = Echo REQUEST");
+    println!("What comes after echo reply? {:?}", nnetwork.feed_forward(Matrix::from(vec![8.0, 0.0])).data);
+	println!("What comes after echo request? {:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 8.0])).data);
+
+
+    //// XOR PoC
+    //let inputs = vec![
+    //    vec![0.0, 0.0],
+    //    vec![0.0, 1.0],
+    //    vec![1.0, 0.0],
+    //    vec![1.0, 1.0],
+    //];
+//
+    //// target values
+    //let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
+//
+    //// train network
+    //let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
+//
+    //nnetwork.train(inputs, targets, 10000);
+//
+    //// test the neural network
+    //println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 0.0])));
+	//println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 1.0])));
+	//println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 0.0])));
+	//println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 1.0])));
 }
