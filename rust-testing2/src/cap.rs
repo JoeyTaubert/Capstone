@@ -75,13 +75,14 @@ pub fn interface_fn() -> String {
     let mut interface_input: String = choose_int();
     let all_interfaces = interface_list();
 
-    // Begin "infinite" loop
+    // Begin loop, this will continue until user input matches a interface
     loop {
         match all_interfaces.contains(&interface_input) {
             true => break, // If the interface is found, break the loop
             false => {
                 // If not found, print a message and ask for input again
                 println!("ERROR[-]: Interface '{}' not found, please try again.", &interface_input);
+                // I'm not sure if this is how I should be calling choose_int() or if I need to return differently
                 interface_input = choose_int();
             }
         }
@@ -224,6 +225,10 @@ pub fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
                     IpNextHeaderProtocols::Icmp => {
                             // ICMP is a layer 3 protocol and does not have a port to extract
                             protocol = String::from("ICMP"); 
+                    },
+                    // HOPOPT, "Hop-by-Hop" IPv6 extension header
+                    IpNextHeaderProtocols::Hopopt => {
+                        protocol = String::from("HOPOPT")
                     },
                     // For any other 'match' condition, print an error to the error log
                     _ => {
