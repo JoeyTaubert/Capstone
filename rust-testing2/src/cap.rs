@@ -2,6 +2,8 @@ use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::Udp
 use pnet::datalink::{self, NetworkInterface, Channel};
 use std::{io::Write, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::OpenOptions};
 use chrono::{Utc, DateTime};
+use mongodb::{bson::{doc, Bson, Document}, Client, Collection};
+use tokio;
 
 // ------------------------
 /// Lists available network interfaces
@@ -73,7 +75,14 @@ pub fn choose_int() -> String {
 pub fn interface_fn() -> String {
     // Calls choose_int() and interface_list()
     let mut interface_input: String = choose_int();
-    let all_interfaces = interface_list();
+    
+    let devices = pcap::Device::list().expect("[-]ERROR: Failed to grab network interfaces");
+
+    let mut all_interfaces = Vec::new();
+
+    for device in devices{
+        all_interfaces.push(device.name.clone());
+    }
 
     // Begin loop, this will continue until user input matches a interface
     loop {
@@ -115,16 +124,16 @@ pub fn capture(interface: String, num_of_packets: i32) {
 
     // Grab file handle
     //// Use Path/PathBuf for this? 
-    let mut cfile = match OpenOptions::new()
-    .append(true)
-    .create(true)
-    .open(format!("caps/{}-Capture.txt", rnowformatted)) {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. Maybe the directory 'caps' is missing? {}", e);
-            return;
-        },
-    }; 
+    //let mut cfile = match OpenOptions::new()
+    //.append(true)
+    //.create(true)
+    //.open(format!("caps/{}-Capture.txt", rnowformatted)) {
+    //    Ok(file) => file,
+    //    Err(e) => {
+    //        eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. Maybe the directory 'caps' is missing? {}", e);
+    //        return;
+    //    },
+    //}; 
     
     let interfaces = datalink::interfaces();
     let mut number = 0;
@@ -147,10 +156,16 @@ pub fn capture(interface: String, num_of_packets: i32) {
                         // Pass the packet data to the parse_packet()
                         let packet_data: PacketStruct = parse_packet(&packet, number);
 
+                        // Send to MongoDB
+                        //// For each packet captured, this will create a database interaction. I want to combine these into batches to increase efficiency
+                        let future = async {
+                            insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
+                        };
+
                         // Write to the file
-                        let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
-                        writeln!(cfile, "{}", data_string)
-                            .expect("[-]ERROR: Error writing to file.");
+                        //let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
+                        //writeln!(cfile, "{}", data_string)
+                        //    .expect("[-]ERROR: Error writing to file.");
 
                     },
                     // If there is an error accessing the next ethernet frame, print an error to the error log
@@ -290,11 +305,38 @@ pub fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
     };
     
     //Format: 
-    //println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
     // Return an instance of PacketStruct so that the packet can be written to a file
     return PacketStruct::new(number, timestamp, protocol, source_mac,  source_ip, source_port, dest_mac, dest_ip, dest_port, length, ppayload);
     
+}
+
+
+pub async fn insert_packet_to_mongo(packet_data: PacketStruct) -> Result<(), String> {
+    let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
+        .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
+    let database = client.database("captures");
+    let table: Collection<Document> = database.collection("packets");
+
+    let new_doc = doc! {
+        "number": packet_data.number,
+        "timestamp": &packet_data.time.to_string(),
+        "protocol": &packet_data.protocol,
+        "source_mac": &packet_data.source_mac.to_string(),
+        "source_ip": &packet_data.source_ip.to_string(),
+        "source_port": packet_data.source_port.to_string(),
+        "dest_mac": &packet_data.dest_mac.to_string(),
+        "dest_ip": &packet_data.dest_ip.to_string(),
+        "dest_port": packet_data.dest_port.to_string(),
+        "length": packet_data.length.to_string(),
+        "payload": packet_data.payload.iter().map(|&byte| Bson::Int32(byte as i32)).collect::<Vec<Bson>>(),
+    };
+
+    table.insert_one(new_doc, None).await
+        .map_err(|e| format!("[-]ERROR: Failed to insert document into MongoDB: {}", e))?;
+
+    Ok(())
 }
 
 // ------------------------
@@ -363,7 +405,8 @@ impl PacketStruct {
         }
 }
 
-pub fn main() {
+#[tokio::main]
+pub async fn main() {
     // Call interface_fn() and assign to variable
     let interface_checked = interface_fn();
 
