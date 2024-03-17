@@ -111,7 +111,7 @@ pub fn interface_fn() -> String {
 /// N/A
 /// 
 /// * Outputs a file name YYYY-MM-DD-HH-MM-SS-Capture.txt
-pub fn capture(interface: String, num_of_packets: i32) {
+pub async fn capture(interface: String, num_of_packets: i32) {
     println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
 
     let calc_num_of_packets = num_of_packets - 1;
@@ -158,9 +158,7 @@ pub fn capture(interface: String, num_of_packets: i32) {
 
                         // Send to MongoDB
                         //// For each packet captured, this will create a database interaction. I want to combine these into batches to increase efficiency
-                        let future = async {
-                            insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
-                        };
+                        insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
 
                         // Write to the file
                         //let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
@@ -432,5 +430,5 @@ pub async fn main() {
     }
 
     // Call capture() passing the interface
-    capture(interface_checked, packet_choice_i32);
+    capture(interface_checked, packet_choice_i32).await;
 }
