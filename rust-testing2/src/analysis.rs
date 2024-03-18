@@ -1,8 +1,8 @@
 use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, arp::ArpPacket}, util::MacAddr};
 use pnet::datalink::{self, NetworkInterface, Channel};
 use rand::Error;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use chrono::{Utc, DateTime};
+use std::{{net::{IpAddr, Ipv4Addr, Ipv6Addr}}, io::{self, Write}};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, ParseResult, Utc};
 use mongodb::{bson::{doc, Bson, Document}, Client, Collection, {options::IndexOptions, IndexModel}};
 use tokio;
 
@@ -20,7 +20,7 @@ pub async fn create_index() -> Result<(), String> {
 
     // Create the index model using the builder
     let index_model = IndexModel::builder()
-        .keys(doc! { "timestamp": 1 }) // 1 for ascending order, -1 for descending
+        .keys(doc! { "timestamp": 1 }) 
         .options(Some(IndexOptions::builder().build()))
         .build();
 
@@ -36,8 +36,27 @@ pub async fn create_index() -> Result<(), String> {
 ///
 ///
 pub fn get_timestamps() -> (String, String) {
+    // Initialize variables
+    let mut start_timestamp = String::new();
+    let mut end_timestamp = String::new();
+
+    // Prompt for start timestamp
+    println!("Start timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
+    io::stdin().read_line(&mut start_timestamp).expect("[-]ERROR: Failed to read line");
     
-    
+    // Check if a valid timestamp was supplied
+    match NaiveDateTime::parse_from_str(start_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
+        Ok(start_timestamp) => {},
+        Err(e) => println!("[-]ERROR: Incorrect start timestamp format, setting to empty string"),
+    }
+
+    // Prompt for end timestamp
+    println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
+    io::stdin().read_line(&mut end_timestamp).expect("[-]ERROR: Failed to read line");
+
+
+
+    (start_timestamp, end_timestamp)
 }
 
 ///
