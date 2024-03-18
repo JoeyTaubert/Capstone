@@ -4,9 +4,9 @@ mod ml;
 
 fn main () {
 
-    cap::main();
+    //cap::main();
 
-    //analysis::main();
+    analysis::main();
 
     //ml::main();
 }

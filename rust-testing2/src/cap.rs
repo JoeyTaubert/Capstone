@@ -1,6 +1,6 @@
 use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, arp::ArpPacket}, util::MacAddr};
 use pnet::datalink::{self, NetworkInterface, Channel};
-use std::{io::Write, net::{IpAddr, Ipv4Addr, Ipv6Addr}, fs::OpenOptions};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use chrono::{Utc, DateTime};
 use mongodb::{bson::{doc, Bson, Document}, Client, Collection};
 use tokio;
@@ -115,25 +115,6 @@ pub async fn capture(interface: String, num_of_packets: i32) {
     println!("\n[+]INFO: Capturing {} packets on {}...\n", num_of_packets, interface);
 
     let calc_num_of_packets = num_of_packets - 1;
-
-    // Set up timestamp for file creation
-    let rnow = Utc::now();
-    //let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
-
-    //// Perform a check if the file exists (is this the right place?) if not, create the file and write the header.
-
-    // Grab file handle
-    //// Use Path/PathBuf for this? 
-    //let mut cfile = match OpenOptions::new()
-    //.append(true)
-    //.create(true)
-    //.open(format!("caps/{}-Capture.txt", rnowformatted)) {
-    //    Ok(file) => file,
-    //    Err(e) => {
-    //        eprintln!("[-]ERROR: An error occured while trying to acquire the file handle. Maybe the directory 'caps' is missing? {}", e);
-    //        return;
-    //    },
-    //}; 
     
     let interfaces = datalink::interfaces();
     let mut number = 0;
@@ -156,17 +137,12 @@ pub async fn capture(interface: String, num_of_packets: i32) {
                         // Pass the packet data to the parse_packet()
                         let packet_data: PacketStruct = parse_packet(&packet, number);
 
-                        // Send to MongoDB using a separate thread 
+                        // Send to MongoDB using a separate async task
                         //// For each packet captured, this will create a database interaction. I want to combine these into batches to increase efficiency
                         tokio::spawn(async move {
                             insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
                         });
-                        
-
-                        // Write to the file
-                        //let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
-                        //writeln!(cfile, "{}", data_string)
-                        //    .expect("[-]ERROR: Error writing to file.");
+                        //// Add error handling since insert_packet_to_mongo() returns a Result type
 
                     },
                     // If there is an error accessing the next ethernet frame, print an error to the error log
@@ -408,6 +384,8 @@ impl PacketStruct {
 
 #[tokio::main]
 pub async fn main() {
+    // Option to select PCAP instead of doing a capture?
+    
     // Call interface_fn() and assign to variable
     let interface_checked = interface_fn();
 
@@ -433,5 +411,6 @@ pub async fn main() {
     }
 
     // Call capture() passing the interface
+    //// Need to handle the returned result type
     capture(interface_checked, packet_choice_i32).await;
 }
