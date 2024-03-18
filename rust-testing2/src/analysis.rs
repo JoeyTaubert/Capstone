@@ -46,15 +46,29 @@ pub fn get_timestamps() -> (String, String) {
     
     // Check if a valid timestamp was supplied
     match NaiveDateTime::parse_from_str(start_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
-        Ok(start_timestamp) => {},
-        Err(e) => println!("[-]ERROR: Incorrect start timestamp format, setting to empty string"),
+        Ok(_) => {},
+        Err(e) => {
+            println!("[-]ERROR: Incorrect start timestamp format: {}", e);
+            start_timestamp = String::from("");
+            end_timestamp = String::from("");
+            return (start_timestamp, end_timestamp)
+        },
     }
 
     // Prompt for end timestamp
     println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
     io::stdin().read_line(&mut end_timestamp).expect("[-]ERROR: Failed to read line");
 
-
+    // Check if a valid timestamp was supplied
+    match NaiveDateTime::parse_from_str(end_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
+        Ok(_) => {},
+        Err(e) => {
+            println!("[-]ERROR: Incorrect end timestamp format: {}", e);
+            start_timestamp = String::from("");
+            end_timestamp = String::from("");
+            return (start_timestamp, end_timestamp)
+        },
+    }
 
     (start_timestamp, end_timestamp)
 }
@@ -104,7 +118,14 @@ pub async fn main() {
         Err(e) => println!("[-]ERROR: Failed to create index: {}", e),
     }
 
-    let (start_timestamp, end_timestamp) = get_timestamps();
+    let mut start_timestamp = String::from("");
+    let mut end_timestamp = String::from("");
+
+    while start_timestamp.is_empty() || end_timestamp.is_empty() {
+        (start_timestamp, end_timestamp) = get_timestamps();
+    }  
+        
+    
 
     // Compute Key Metrics
 
