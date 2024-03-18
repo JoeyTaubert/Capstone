@@ -118,7 +118,7 @@ pub async fn capture(interface: String, num_of_packets: i32) {
 
     // Set up timestamp for file creation
     let rnow = Utc::now();
-    let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
+    //let rnowformatted = rnow.format("%Y-%m-%d_%H-%M-%S").to_string();
 
     //// Perform a check if the file exists (is this the right place?) if not, create the file and write the header.
 
@@ -156,9 +156,12 @@ pub async fn capture(interface: String, num_of_packets: i32) {
                         // Pass the packet data to the parse_packet()
                         let packet_data: PacketStruct = parse_packet(&packet, number);
 
-                        // Send to MongoDB
+                        // Send to MongoDB using a separate thread 
                         //// For each packet captured, this will create a database interaction. I want to combine these into batches to increase efficiency
-                        insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
+                        tokio::spawn(async move {
+                            insert_packet_to_mongo(packet_data).await.expect("[-]ERROR: Failed to start insert_packet_to_mongo function.");
+                        });
+                        
 
                         // Write to the file
                         //let data_string = format!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}", packet_data.number, packet_data.time, packet_data.protocol, packet_data.source_mac, packet_data.dest_mac, packet_data.source_ip, packet_data.source_port, packet_data.dest_ip, packet_data.dest_port, packet_data.length, packet_data.payload);
