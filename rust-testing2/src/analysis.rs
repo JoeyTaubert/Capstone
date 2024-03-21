@@ -5,6 +5,7 @@ use std::{{net::{IpAddr, Ipv4Addr, Ipv6Addr}}, io::{self, Write}};
 use chrono::{DateTime, NaiveDate, NaiveDateTime, ParseResult, Utc};
 use mongodb::{bson::{doc, Bson, Document}, Client, Collection, {options::IndexOptions, IndexModel}};
 use tokio;
+use futures_util::TryStreamExt;
 
 ///
 ///
@@ -41,7 +42,7 @@ pub fn get_timestamps() -> (String, String) {
     let mut end_timestamp = String::new();
 
     // Prompt for start timestamp
-    println!("Start timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
+    println!("Start timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS UTC): ");
     io::stdin().read_line(&mut start_timestamp).expect("[-]ERROR: Failed to read line");
     
     // Check if a valid timestamp was supplied
@@ -56,11 +57,11 @@ pub fn get_timestamps() -> (String, String) {
     }
 
     // Prompt for end timestamp
-    println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
+    println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS UTC): ");
     io::stdin().read_line(&mut end_timestamp).expect("[-]ERROR: Failed to read line");
 
     // Check if a valid timestamp was supplied
-    match NaiveDateTime::parse_from_str(end_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
+    match NaiveDateTime::parse_from_str(end_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f UTC") {
         Ok(_) => {},
         Err(e) => {
             println!("[-]ERROR: Incorrect end timestamp format: {}", e);
@@ -77,7 +78,7 @@ pub fn get_timestamps() -> (String, String) {
 ///
 ///
 ///
-pub async fn compute_total_size(start_timestamp: String, end_timestamp: String) -> Result<(), String>{
+pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String) -> Result<i64, String>{
     // Define variables needed to interact with MongoDB
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
         .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
@@ -91,9 +92,9 @@ pub async fn compute_total_size(start_timestamp: String, end_timestamp: String) 
 
     // Build the query filter
         let query = doc! {
-        "timestamp": {
-            "$gte": start_timestamp,
-            "$lte": end_timestamp
+            "timestamp": {
+                "$gte": start_timestamp,
+                "$lte": end_timestamp
         }
     };
 
@@ -101,9 +102,16 @@ pub async fn compute_total_size(start_timestamp: String, end_timestamp: String) 
     let mut cursor = table.find(query, None).await
         .map_err(|e| format!("[-]ERROR: Failed to query database: {}", e))?;
 
+    let mut total_size: i64 = 0;
 
+    // Iterate over the returned results, add each "length" field to total_size
+    while let Some(document) = cursor.try_next().await.map_err(|e| format!("[-]ERROR: Failed to fetch document: {}", e))? {
+        if let Some(length) = document.get_i64("length").ok() {
+            total_size += length;
+        }
+    }
 
-    Ok(())
+    Ok((total_size))
 }
 
 
@@ -118,21 +126,41 @@ pub async fn main() {
         Err(e) => println!("[-]ERROR: Failed to create index: {}", e),
     }
 
+    // Initialize timestamps so we can send them to the function in a tuple
     let mut start_timestamp = String::from("");
     let mut end_timestamp = String::from("");
 
+    // While the timestamps are "", get timestamps
     while start_timestamp.is_empty() || end_timestamp.is_empty() {
+        println!("");
         (start_timestamp, end_timestamp) = get_timestamps();
     }  
         
-    
-
     // Compute Key Metrics
 
+
+
     // Total Size of Packets in x timeframe
-    match compute_total_size(start_timestamp, end_timestamp).await {
-        Ok(_) => println!("[+]INFO: Successfully queried database"),
-        Err(e) => println!("[-]ERROR: Failed to query database: {}", e),
+    let mut total_size: i64 = 0;
+    
+
+    match compute_total_size(&start_timestamp, &end_timestamp).await {
+        Ok(computed_total_size) => {
+            println!("[+]INFO: Successfully computed total size.");
+            total_size = computed_total_size;
+        },
+        Err(e) => {
+            println!("[-]ERROR: Failed to compute total size: {}", e);
+            total_size = 0;
+        },
+        
     }
+
+    println!("");
+    println!("Start timestamp: {}", start_timestamp);
+    println!("End timestamp: {}", end_timestamp);
+    println!("");
+    println!("Total size: {} bytes", total_size);
+
 
 }
