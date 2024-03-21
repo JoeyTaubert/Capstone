@@ -1,17 +1,15 @@
-use pnet::{packet::{ipv4::Ipv4Packet, ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, arp::ArpPacket}, util::MacAddr};
-use pnet::datalink::{self, NetworkInterface, Channel};
-use rand::Error;
-use std::{{net::{IpAddr, Ipv4Addr, Ipv6Addr}}, io::{self, Write}};
-use chrono::{DateTime, NaiveDate, NaiveDateTime, ParseResult, Utc};
-use mongodb::{bson::{doc, Bson, Document}, Client, Collection, {options::IndexOptions, IndexModel}};
+use std::io::{self};
+use chrono::NaiveDateTime;
+use mongodb::{bson::{doc, Document}, Client, Collection, {options::IndexOptions, IndexModel}};
 use tokio;
 use futures_util::TryStreamExt;
 
+// ------------------------
+/// Creates an index
 ///
 ///
 ///
-///
-pub async fn create_index() -> Result<(), String> {
+pub async fn create_timestamp_index() -> Result<(), String> {
     // Define variables needed to interact with MongoDB
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
         .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
@@ -32,9 +30,22 @@ pub async fn create_index() -> Result<(), String> {
     Ok(()) // Returns Ok if successful
 }
 
+// ------------------------
+/// Grab start/end timestamps
+/// 
+/// Timestamps are in format: 
+/// 
+/// YYYY-MM-DD HH:MM:SS.SSSSSSSSS
+/// 
+/// Ex. 2024-03-18 11:00:00.000000000 
 ///
-///
-///
+/// # Arguements
+/// * None
+/// 
+/// # Returns
+/// * (String, String)
+///     * start_timestamp: String
+///     * end_timestamp: String
 ///
 pub fn get_timestamps() -> (String, String) {
     // Initialize variables
@@ -47,7 +58,10 @@ pub fn get_timestamps() -> (String, String) {
     
     // Check if a valid timestamp was supplied
     match NaiveDateTime::parse_from_str(start_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
-        Ok(_) => {},
+        Ok(_) => {
+            let mut start_timestamp_trimmed = start_timestamp.trim_end().to_string();
+            start_timestamp_trimmed.push_str(" UTC");
+        },
         Err(e) => {
             println!("[-]ERROR: Incorrect start timestamp format: {}", e);
             start_timestamp = String::from("");
@@ -61,8 +75,11 @@ pub fn get_timestamps() -> (String, String) {
     io::stdin().read_line(&mut end_timestamp).expect("[-]ERROR: Failed to read line");
 
     // Check if a valid timestamp was supplied
-    match NaiveDateTime::parse_from_str(end_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f UTC") {
-        Ok(_) => {},
+    match NaiveDateTime::parse_from_str(end_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f") {
+        Ok(_) => {
+            let mut end_timestamp_trimmed = end_timestamp.trim_end().to_string();
+            end_timestamp_trimmed.push_str(" UTC");
+        },
         Err(e) => {
             println!("[-]ERROR: Incorrect end timestamp format: {}", e);
             start_timestamp = String::from("");
@@ -74,9 +91,16 @@ pub fn get_timestamps() -> (String, String) {
     (start_timestamp, end_timestamp)
 }
 
+// ------------------------
 ///
-///
-///
+/// # Arguements
+/// * start_timestamp: &String - Start timestamp 
+/// * end_timestamp: &String - End timestamp
+/// 
+/// # Returns
+/// * Result<i64, String>
+///     * total_size: i64 - Total size, in bytes of all packets matching query
+///     * Error: String
 ///
 pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String) -> Result<i64, String>{
     // Define variables needed to interact with MongoDB
@@ -106,8 +130,10 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
 
     // Iterate over the returned results, add each "length" field to total_size
     while let Some(document) = cursor.try_next().await.map_err(|e| format!("[-]ERROR: Failed to fetch document: {}", e))? {
-        if let Some(length) = document.get_i64("length").ok() {
-            total_size += length;
+        if let Ok(length_str) = document.get_str("length") {
+            if let Ok(length) = length_str.parse::<i64>() {
+                total_size += length;
+            }
         }
     }
 
@@ -115,13 +141,22 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
 }
 
 
+// ------------------------
+/// Main function for controlling analysis/computation of key metrics
+///
+/// # Arguements
+/// * None
+/// 
+/// # Returns
+/// * None (Key metrics are stored in DB)
+/// 
 #[tokio::main]
 pub async fn main() {
     // May need to add a step here where we reorganize the data in MongoDB based on timestamp. 
     // OR, when we query, just sort based on timestamp
     
     // Create the index for timestamp, this is a no-op for MongoDB if it is already existing, which uses very minimal resources
-    match create_index().await {
+    match create_timestamp_index().await {
         Ok(_) => println!("[+]INFO: Index created or already exists"),
         Err(e) => println!("[-]ERROR: Failed to create index: {}", e),
     }
@@ -138,12 +173,9 @@ pub async fn main() {
         
     // Compute Key Metrics
 
-
-
     // Total Size of Packets in x timeframe
     let mut total_size: i64 = 0;
     
-
     match compute_total_size(&start_timestamp, &end_timestamp).await {
         Ok(computed_total_size) => {
             println!("[+]INFO: Successfully computed total size.");
@@ -156,11 +188,6 @@ pub async fn main() {
         
     }
 
-    println!("");
-    println!("Start timestamp: {}", start_timestamp);
-    println!("End timestamp: {}", end_timestamp);
-    println!("");
     println!("Total size: {} bytes", total_size);
-
 
 }
