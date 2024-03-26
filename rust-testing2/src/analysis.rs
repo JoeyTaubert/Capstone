@@ -184,7 +184,21 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
         }
     }
 
+    match insert_result().await {
+        Ok(_) => {
+
+        },
+        Err(e) => {
+
+        }
+    }
+
     Ok((total_size))
+}
+
+pub async fn insert_result() -> Result<(), String> {
+
+    Ok(())
 }
 
 
