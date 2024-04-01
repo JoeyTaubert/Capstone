@@ -16,7 +16,7 @@ use futures_util::TryStreamExt;
 ///     * () - Returns as Ok()
 ///     * String - Returns an Err enum with string value for handling
 /// 
-pub async fn create_index(field: String, ascend: i64) -> Result<(), String>{
+pub async fn _create_index(field: String, ascend: i64) -> Result<(), String>{
     // Define variables needed to interact with MongoDB
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
     .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
@@ -164,8 +164,8 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
     // Build the query filter
         let query = doc! {
             "timestamp": {
-                "$gte": start_timestamp,
-                "$lte": end_timestamp
+                "$gte": &start_timestamp,
+                "$lte": &end_timestamp
         }
     };
 
@@ -184,19 +184,28 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
         }
     }
 
-    match insert_result().await {
-        Ok(_) => {
+    let insert_table = String::from("size");
 
-        },
-        Err(e) => {
-
-        }
-    }
-
-    Ok((total_size))
+    match insert_result(insert_table, start_timestamp, end_timestamp, total_size).await {
+        Ok(_) => Ok(total_size),
+        Err(e) => Err(e),
+    } 
 }
 
-pub async fn insert_result() -> Result<(), String> {
+pub async fn insert_result(table: String, start_timestamp: &String, end_timestamp: &String, data: i64) -> Result<(), String> {
+    let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
+        .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
+    let database = client.database("captures");
+    let collection: Collection<Document> = database.collection(&table);
+
+    let new_doc = doc! {
+        "start_timestamp": &start_timestamp,
+        "end_timestamp": &end_timestamp,
+        "size": &data,
+    };
+
+    collection.insert_one(new_doc, None).await.expect("[-] ERROR: Failed to insert analysis data into MongoDB"); 
+
 
     Ok(())
 }
@@ -235,20 +244,9 @@ pub async fn main() {
     // Compute Key Metrics
 
     // Total Size of Packets in x timeframe
-    let mut total_size: i64 = 0;
-    
     match compute_total_size(&start_timestamp, &end_timestamp).await {
-        Ok(computed_total_size) => {
-            println!("[+]INFO: Successfully computed total size.");
-            total_size = computed_total_size;
-        },
-        Err(e) => {
-            println!("[-]ERROR: Failed to compute total size: {}", e);
-            total_size = 0;
-        },
-        
-    }
-
-    println!("Total size: {} bytes", total_size);
+        Ok(total_size) => println!("{} inserted into MongoDB", total_size),
+        Err(e) => println!("[-] ERROR: Failed to compute total size of data range: {}", e)
+    };
 
 }
