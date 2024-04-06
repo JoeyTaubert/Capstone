@@ -10,3 +10,6 @@ pcap = "1.1.0"
 pnet = "0.34.0"
 chrono = "0.4.31"
 rand = "0.8.5"
+tokio = { version = "1.36.0", features = ["full"] }
+mongodb = "2.8.2"
+futures-util = "0.3.30"
