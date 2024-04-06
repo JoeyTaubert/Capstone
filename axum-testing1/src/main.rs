@@ -1,28 +1,37 @@
-use axum::{http::StatusCode, response::Html, routing::get, Extension, Router};
+use axum::{
+    extract::Form,
+    http::StatusCode,
+    response::Html,
+    routing::{get, post},
+    Extension, Json, Router,
+};
 use handlebars::Handlebars;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 use tokio::fs::read_to_string;
 
 // Reference: https://github.com/programatik29/axum-tutorial/blob/master/tutorial/01-introduction.md
 // Axum docs: https://docs.rs/axum/latest/axum/#example
 
-/// Handler to serve the root route "/"
-async fn index_page() -> Html<String> {
-    match tokio::fs::read_to_string("static/html/index.html").await {
-        Ok(html_content) => Html(html_content),
-        Err(e) => {
-            println!("{}", e);
-            Html("Error loading the form".to_string())
-        }
-    }
-}
+// STRUCTS -=-=-=-=-=-=-=-=-=-=-=-=
 
-/// Context struct for content handlebars will use to fill in the capture_template.html  
+/// Context struct for interfaces dropdown on capture_template.html  
 #[derive(Serialize)]
-struct Context {
+struct InterfacesContext {
     interfaces: Vec<String>,
 }
+
+#[derive(Deserialize)]
+struct InterfaceFormData {
+    interface: String,
+}
+
+#[derive(Deserialize)]
+struct PacketFormData {
+    num_packets: i32,
+}
+
+// FUNCTIONS -=-=-=-=-=-=-=-=-=-=-=-=
 
 /// Gets all interfaces on the server  
 fn interface_list() -> Vec<String> {
@@ -39,19 +48,52 @@ fn interface_list() -> Vec<String> {
     interfaces_vec
 }
 
+// HANDLERS -=-=-=-=-=-=-=-=-=-=-=-=
+
+/// Handler to serve the root route "/"
+async fn index_page() -> Html<String> {
+    match tokio::fs::read_to_string("static/html/index.html").await {
+        Ok(html_content) => Html(html_content),
+        Err(e) => {
+            println!("{}", e);
+            Html("Error loading the form".to_string())
+        }
+    }
+}
+
 /// Handler for /capture.html route
 async fn capture_page_interfaces(
     Extension(handlebars): Extension<Arc<Handlebars<'_>>>,
 ) -> Result<Html<String>, (StatusCode, String)> {
     let interfaces = interface_list();
 
-    let context = Context { interfaces };
+    let context = InterfacesContext { interfaces };
 
     let rendered = handlebars
         .render("capture_template", &context)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Html(rendered))
+}
+
+/// Handler for interface form submission
+///
+async fn submit_interface(Form(data): Form<InterfaceFormData>) -> (StatusCode, Json<&'static str>) {
+    // Parse out data from the submission
+    println!("Selected interface: {}", data.interface);
+
+    // Return status code
+    (StatusCode::OK, Json("Interface submitted successfully"))
+}
+
+/// Handler for packet number form submission
+/// 
+async fn submit_packets(Form(data): Form<PacketFormData>) -> (StatusCode, Json<&'static str>) {
+    // Parse out data
+    println!("Number of packets to capture: {}", data.num_packets);
+
+    // Return status code OK, with string
+    (StatusCode::OK, Json("Packets submitted successfully"))
 }
 
 #[tokio::main]
@@ -77,6 +119,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index_page))
         .route("/capture.html", get(capture_page_interfaces))
+        .route("/submit-interface", post(submit_interface))
+        .route("/submit-packets", post(submit_packets))
         .layer(Extension(handlebars));
 
     // Run app, listening on loopback only
