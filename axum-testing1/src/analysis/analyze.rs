@@ -1,3 +1,6 @@
+use futures_util::TryStreamExt;
+use mongodb::{bson::{doc, Document}, Client, Collection};
+
 /// MongoDB insertion function
 pub async fn insert_result(
     table: String,

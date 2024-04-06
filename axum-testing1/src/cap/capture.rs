@@ -1,3 +1,18 @@
+use chrono::{DateTime, Utc};
+use mongodb::{
+    bson::{doc, Bson, Document},
+    Client, Collection,
+};
+use pnet::datalink::{self, Channel, NetworkInterface};
+use pnet::{
+    packet::{
+        arp::ArpPacket, ethernet::EthernetPacket, ip::IpNextHeaderProtocols, ipv4::Ipv4Packet,
+        ipv6::Ipv6Packet, tcp::TcpPacket, udp::UdpPacket, Packet,
+    },
+    util::MacAddr,
+};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
 // ------------------------
 /// Starts a network capture
 ///
@@ -36,7 +51,8 @@ pub async fn capture(interface: String, num_of_packets: i32) {
                         // Store the etherenet frame in variable
                         let packet = EthernetPacket::new(packet).unwrap();
                         // Pass the packet data to the parse_packet()
-                        let packet_data: PacketStruct = parse_packet(&packet, number);
+                        let packet_data: super::PacketStruct::PacketStruct =
+                            parse_packet(&packet, number);
 
                         // Send to MongoDB using a separate async task
                         //// For each packet captured, this will create a database interaction. I want to combine these into batches to increase efficiency
@@ -77,7 +93,10 @@ pub async fn capture(interface: String, num_of_packets: i32) {
 ///
 /// # Returns
 /// N/A
-pub fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
+pub fn parse_packet(
+    packet_data: &EthernetPacket,
+    number: i32,
+) -> super::PacketStruct::PacketStruct {
     // Initialize all needed fields
     let source_mac: MacAddr = packet_data.get_source(); // We already have direct access to layer 2 info, so assign these variables
     let dest_mac: MacAddr = packet_data.get_destination();
@@ -202,7 +221,7 @@ pub fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
     println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
     // Return an instance of PacketStruct so that the packet can be written to a file
-    PacketStruct::new(
+    super::PacketStruct::PacketStruct::new(
         number,
         timestamp,
         protocol,
@@ -217,7 +236,9 @@ pub fn parse_packet(packet_data: &EthernetPacket, number: i32) -> PacketStruct {
     )
 }
 
-pub async fn insert_packet_to_mongo(packet_data: PacketStruct) -> Result<(), String> {
+pub async fn insert_packet_to_mongo(
+    packet_data: super::PacketStruct::PacketStruct,
+) -> Result<(), String> {
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017")
         .await
         .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;

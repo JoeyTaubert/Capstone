@@ -9,6 +9,8 @@ use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
 use tokio::fs::read_to_string;
+mod cap;
+mod analysis;
 
 // Reference: https://github.com/programatik29/axum-tutorial/blob/master/tutorial/01-introduction.md
 // Axum docs: https://docs.rs/axum/latest/axum/#example
@@ -56,13 +58,24 @@ async fn index_page() -> Html<String> {
         Ok(html_content) => Html(html_content),
         Err(e) => {
             println!("{}", e);
-            Html("Error loading the form".to_string())
+            Html("Error loading the page".to_string())
         }
     }
 }
 
-/// Handler for /capture.html route
-async fn capture_page_interfaces(
+/// Handler to serve capture.html
+async fn capture_page() -> Html<String> {
+    match tokio::fs::read_to_string("static/html/capture.html").await {
+        Ok(html_content) => Html(html_content),
+        Err(e) => {
+            println!("{}", e);
+            Html("Error loading the page".to_string())
+        }
+    }
+}
+
+/// Handler for /capture/edit.html route
+async fn capture_edit_settings(
     Extension(handlebars): Extension<Arc<Handlebars<'_>>>,
 ) -> Result<Html<String>, (StatusCode, String)> {
     let interfaces = interface_list();
@@ -70,7 +83,7 @@ async fn capture_page_interfaces(
     let context = InterfacesContext { interfaces };
 
     let rendered = handlebars
-        .render("capture_template", &context)
+        .render("edit_capture_template", &context)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Html(rendered))
@@ -78,7 +91,9 @@ async fn capture_page_interfaces(
 
 /// Handler for interface form submission
 ///
-async fn submit_interface(Form(data): Form<InterfaceFormData>) -> (StatusCode, Json<&'static str>) {
+async fn submit_capture_interface(
+    Form(data): Form<InterfaceFormData>,
+) -> (StatusCode, Json<&'static str>) {
     // Parse out data from the submission
     println!("Selected interface: {}", data.interface);
 
@@ -87,8 +102,10 @@ async fn submit_interface(Form(data): Form<InterfaceFormData>) -> (StatusCode, J
 }
 
 /// Handler for packet number form submission
-/// 
-async fn submit_packets(Form(data): Form<PacketFormData>) -> (StatusCode, Json<&'static str>) {
+///
+async fn submit_capture_packets(
+    Form(data): Form<PacketFormData>,
+) -> (StatusCode, Json<&'static str>) {
     // Parse out data
     println!("Number of packets to capture: {}", data.num_packets);
 
@@ -96,20 +113,28 @@ async fn submit_packets(Form(data): Form<PacketFormData>) -> (StatusCode, Json<&
     (StatusCode::OK, Json("Packets submitted successfully"))
 }
 
+async fn start_capture() {
+    
+}
+
+//async fn restart_capture() {}
+
+//async fn stop_capture() {}
+
 #[tokio::main]
 async fn main() {
     // Initialize Handlebars
     let mut handlebars = Handlebars::new();
 
-    // Get contents of template HTML
-    let path = PathBuf::from("static/html/capture_template.html");
-    let template_content = read_to_string(path)
+    // Get contents of template HTMLs
+    let edit_capture_path = PathBuf::from("static/html/capture/edit_capture_template.html");
+    let edit_capture_template_content = read_to_string(edit_capture_path)
         .await
         .expect("Cannot read template file");
 
-    // Register the template with Handlebars
+    // Register the templates with Handlebars
     handlebars
-        .register_template_string("capture_template", &template_content)
+        .register_template_string("edit_capture_template", &edit_capture_template_content)
         .expect("Failed to register template");
 
     // Wraps the handlebars instance in the "Atomic Reference Counter" type, used to safely share across multiple threads
@@ -118,9 +143,13 @@ async fn main() {
     // Define app routes
     let app = Router::new()
         .route("/", get(index_page))
-        .route("/capture.html", get(capture_page_interfaces))
-        .route("/submit-interface", post(submit_interface))
-        .route("/submit-packets", post(submit_packets))
+        .route("/capture.html", get(capture_page))
+        .route("/capture/edit.html", get(capture_edit_settings))
+        .route("/capture/start.html", get(start_capture))
+        //.route("/capture/restart.html", get(restart_capture))
+        //.route("/capture/stop.html", get(stop_capture))
+        .route("/capture/submit-interface", post(submit_capture_interface))
+        .route("/capture/submit-packets", post(submit_capture_packets))
         .layer(Extension(handlebars));
 
     // Run app, listening on loopback only

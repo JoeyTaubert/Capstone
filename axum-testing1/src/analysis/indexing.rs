@@ -1,3 +1,5 @@
+use mongodb::{bson::{doc, Document}, options::IndexOptions, Client, Collection, IndexModel};
+
 // ------------------------
 /// More versatile function for creating indexes
 ///
