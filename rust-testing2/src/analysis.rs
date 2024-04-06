@@ -19,7 +19,7 @@ use std::io::{self};
 ///     * () - Returns as Ok()
 ///     * String - Returns an Err enum with string value for handling
 ///
-pub async fn _create_index(field: String, ascend: i64) -> Result<(), String> {
+pub async fn create_index(field: String, ascend: i64) -> Result<(), String> {
     // Define variables needed to interact with MongoDB
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017")
         .await
