@@ -100,7 +100,7 @@ pub fn get_timestamps() -> (String, String) {
     let mut end_timestamp = String::new();
 
     // Prompt for start timestamp
-    println!("Start timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS UTC): ");
+    println!("Start timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
     io::stdin().read_line(&mut start_timestamp).expect("[-]ERROR: Failed to read line");
     
     // Check if a valid timestamp was supplied
@@ -118,7 +118,7 @@ pub fn get_timestamps() -> (String, String) {
     }
 
     // Prompt for end timestamp
-    println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS UTC): ");
+    println!("End timestamp: (YYYY-MM-DD HH:MM:SS.SSSSSSSSS): ");
     io::stdin().read_line(&mut end_timestamp).expect("[-]ERROR: Failed to read line");
 
     // Check if a valid timestamp was supplied
@@ -195,7 +195,7 @@ pub async fn compute_total_size(start_timestamp: &String, end_timestamp: &String
 pub async fn insert_result(table: String, start_timestamp: &String, end_timestamp: &String, data: i64) -> Result<(), String> {
     let client = Client::with_uri_str("mongodb://127.0.0.1:27017").await
         .map_err(|e| format!("[-]ERROR: Failed to connect to MongoDB: {}", e))?;
-    let database = client.database("captures");
+    let database = client.database("metrics");
     let collection: Collection<Document> = database.collection(&table);
 
     let new_doc = doc! {
@@ -205,7 +205,6 @@ pub async fn insert_result(table: String, start_timestamp: &String, end_timestam
     };
 
     collection.insert_one(new_doc, None).await.expect("[-] ERROR: Failed to insert analysis data into MongoDB"); 
-
 
     Ok(())
 }
