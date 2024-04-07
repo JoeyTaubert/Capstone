@@ -3,16 +3,13 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    serve, Extension, Json, Router,
+    Extension, Router,
 };
 use axum_macros::debug_handler;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
-use tokio::{
-    fs::read_to_string,
-    sync::{Mutex as AsyncMutex, RwLock},
-};
+use tokio::sync::RwLock;
 mod analysis;
 mod cap;
 
@@ -31,18 +28,6 @@ struct InterfacesContext {
 struct CaptureContext {
     is_running: String,
     interface: String,
-    num_packets: u32,
-}
-
-/// Struct for holding interface form submission
-#[derive(Deserialize)]
-struct InterfaceFormData {
-    interface: String,
-}
-
-/// Struct for holding packet number form submission
-#[derive(Deserialize)]
-struct PacketFormData {
     num_packets: u32,
 }
 
