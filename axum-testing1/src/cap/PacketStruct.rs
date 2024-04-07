@@ -10,7 +10,7 @@ use pnet::util::MacAddr;
 /// * new() - Takes all fields as parameters, returns a PacketStruct type. Used to create a new instance of the struct.
 pub struct PacketStruct {
     // Could implement lifetimes here if I would like to take in references, like &i32 and &DateTime<Utc>
-    pub number: i32,
+    pub number: u32,
     pub time: DateTime<Utc>,
     pub protocol: String,
     pub source_mac: MacAddr,
@@ -27,7 +27,7 @@ pub struct PacketStruct {
 /// https://rust-lang.github.io/rust-clippy/master/index.html#/too_many_arguments
 impl PacketStruct {
     pub fn new(
-        number: i32,
+        number: u32,
         time: DateTime<Utc>,
         protocol: String,
         source_mac: MacAddr,

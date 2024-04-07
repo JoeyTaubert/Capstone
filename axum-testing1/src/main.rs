@@ -1,16 +1,20 @@
 use axum::{
-    extract::Form,
+    extract::{Form, State},
     http::StatusCode,
-    response::Html,
+    response::{Html, IntoResponse, Redirect},
     routing::{get, post},
-    Extension, Json, Router,
+    serve, Extension, Json, Router,
 };
+use axum_macros::debug_handler;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Arc};
-use tokio::fs::read_to_string;
-mod cap;
+use tokio::{
+    fs::read_to_string,
+    sync::{Mutex as AsyncMutex, RwLock},
+};
 mod analysis;
+mod cap;
 
 // Reference: https://github.com/programatik29/axum-tutorial/blob/master/tutorial/01-introduction.md
 // Axum docs: https://docs.rs/axum/latest/axum/#example
@@ -23,14 +27,37 @@ struct InterfacesContext {
     interfaces: Vec<String>,
 }
 
+#[derive(Serialize)]
+struct CaptureContext {
+    is_running: String,
+    interface: String,
+    num_packets: u32,
+}
+
+/// Struct for holding interface form submission
 #[derive(Deserialize)]
 struct InterfaceFormData {
     interface: String,
 }
 
+/// Struct for holding packet number form submission
 #[derive(Deserialize)]
 struct PacketFormData {
-    num_packets: i32,
+    num_packets: u32,
+}
+
+#[derive(Clone, Deserialize, Default)]
+/// Struct for holding the capture parameters
+/// Could manually impl default for default values
+struct CaptureParams {
+    interface: String,
+    num_packets: u32,
+}
+
+// State tracking of the capture parameters for shared state
+#[derive(Clone, Default)]
+struct CaptureConfig {
+    capture_params: Arc<RwLock<CaptureParams>>, // Mutex/Rwlock for preventing multiple threads from writing to the data at once
 }
 
 // FUNCTIONS -=-=-=-=-=-=-=-=-=-=-=-=
@@ -64,14 +91,28 @@ async fn index_page() -> Html<String> {
 }
 
 /// Handler to serve capture.html
-async fn capture_page() -> Html<String> {
-    match tokio::fs::read_to_string("static/html/capture.html").await {
-        Ok(html_content) => Html(html_content),
-        Err(e) => {
-            println!("{}", e);
-            Html("Error loading the page".to_string())
-        }
-    }
+async fn capture_page(
+    State(state): State<CaptureConfig>,
+    Extension(handlebars): Extension<Arc<Handlebars<'_>>>,
+) -> Result<Html<String>, (StatusCode, String)> {
+    let params = state.capture_params.read().await;
+
+    let interface = params.interface.clone();
+    let num_packets = params.num_packets;
+
+    let is_running = String::from("N/A");
+
+    let context = CaptureContext {
+        is_running,
+        interface,
+        num_packets,
+    };
+
+    let rendered = handlebars
+        .render("capture_template", &context)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Html(rendered))
 }
 
 /// Handler for /capture/edit.html route
@@ -89,32 +130,30 @@ async fn capture_edit_settings(
     Ok(Html(rendered))
 }
 
-/// Handler for interface form submission
-///
-async fn submit_capture_interface(
-    Form(data): Form<InterfaceFormData>,
-) -> (StatusCode, Json<&'static str>) {
-    // Parse out data from the submission
-    println!("Selected interface: {}", data.interface);
-
-    // Return status code
-    (StatusCode::OK, Json("Interface submitted successfully"))
-}
-
 /// Handler for packet number form submission
 ///
-async fn submit_capture_packets(
-    Form(data): Form<PacketFormData>,
-) -> (StatusCode, Json<&'static str>) {
-    // Parse out data
-    println!("Number of packets to capture: {}", data.num_packets);
-
-    // Return status code OK, with string
-    (StatusCode::OK, Json("Packets submitted successfully"))
+async fn submit_capture(
+    State(state): State<CaptureConfig>,
+    Form(data): Form<CaptureParams>,
+) -> Redirect {
+    let mut params = state.capture_params.write().await;
+    params.interface = data.interface;
+    params.num_packets = data.num_packets;
+    Redirect::to("/capture.html")
 }
 
-async fn start_capture() {
-    
+async fn init_capture(State(state): State<CaptureConfig>) -> impl IntoResponse {
+    // Initialize the capture parameters
+    let params = state.capture_params.read().await;
+
+    let interface = params.interface.clone();
+    let num_packets = params.num_packets;
+
+    // May need to change this if capture consists of blocking I/O work
+    // Spawn a new concurrent task
+    tokio::spawn(async move { cap::start_capture(interface, num_packets).await });
+
+    Redirect::to("/capture.html")
 }
 
 //async fn restart_capture() {}
@@ -126,35 +165,42 @@ async fn main() {
     // Initialize Handlebars
     let mut handlebars = Handlebars::new();
 
-    // Get contents of template HTMLs
-    let edit_capture_path = PathBuf::from("static/html/capture/edit_capture_template.html");
-    let edit_capture_template_content = read_to_string(edit_capture_path)
-        .await
-        .expect("Cannot read template file");
+    // Get path of template HTMLs
+    let edit_capture_path = PathBuf::from("static/html/capture/edit_capture_template.hbs");
+    let capture_path = PathBuf::from("static/html/capture.hbs");
 
     // Register the templates with Handlebars
     handlebars
-        .register_template_string("edit_capture_template", &edit_capture_template_content)
+        .register_template_file("edit_capture_template", edit_capture_path)
+        .expect("Failed to register template");
+
+    handlebars
+        .register_template_file("capture_template", capture_path)
         .expect("Failed to register template");
 
     // Wraps the handlebars instance in the "Atomic Reference Counter" type, used to safely share across multiple threads
     let handlebars = Arc::new(handlebars);
+
+    // Shared state tracking for capture parameters
+    let capture_config = CaptureConfig {
+        capture_params: Arc::new(RwLock::new(CaptureParams::default())),
+    };
 
     // Define app routes
     let app = Router::new()
         .route("/", get(index_page))
         .route("/capture.html", get(capture_page))
         .route("/capture/edit.html", get(capture_edit_settings))
-        .route("/capture/start.html", get(start_capture))
-        //.route("/capture/restart.html", get(restart_capture))
-        //.route("/capture/stop.html", get(stop_capture))
-        .route("/capture/submit-interface", post(submit_capture_interface))
-        .route("/capture/submit-packets", post(submit_capture_packets))
-        .layer(Extension(handlebars));
+        .route("/capture/start.html", get(init_capture))
+        .layer(Extension(capture_config.clone()))
+        .route("/capture/submit", post(submit_capture))
+        .layer(Extension(handlebars))
+        .with_state(capture_config.clone());
 
     // Run app, listening on loopback only
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")
         .await
         .unwrap();
+
     axum::serve(listener, app).await.unwrap();
 }

@@ -11,7 +11,7 @@ use pnet::{
     },
     util::MacAddr,
 };
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr};
 
 // ------------------------
 /// Starts a network capture
@@ -24,7 +24,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 /// N/A
 ///
 /// * Outputs a file name YYYY-MM-DD-HH-MM-SS-Capture.txt
-pub async fn capture(interface: String, num_of_packets: i32) {
+pub async fn start_capture(interface: String, num_of_packets: u32) {
     println!(
         "\n[+]INFO: Capturing {} packets on {}...\n",
         num_of_packets, interface
@@ -95,7 +95,7 @@ pub async fn capture(interface: String, num_of_packets: i32) {
 /// N/A
 pub fn parse_packet(
     packet_data: &EthernetPacket,
-    number: i32,
+    number: u32,
 ) -> super::PacketStruct::PacketStruct {
     // Initialize all needed fields
     let source_mac: MacAddr = packet_data.get_source(); // We already have direct access to layer 2 info, so assign these variables
@@ -218,7 +218,7 @@ pub fn parse_packet(
     };
 
     //Format:
-    println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
+    //println!("Number: {} | Time: {} | Protocol: {} | Source MAC: {} | Destination MAC: {} | Source IP: {} | Source Port: {} | Destination IP: {} | Destination Port: {} | Length: {} | Payload: {:?}\n", &number, &timestamp, &protocol, &source_mac, &dest_mac, &source_ip, &source_port, &dest_ip, &dest_port, &length, &ppayload);
 
     // Return an instance of PacketStruct so that the packet can be written to a file
     super::PacketStruct::PacketStruct::new(
