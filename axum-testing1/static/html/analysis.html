@@ -46,19 +46,33 @@
     <a href="/">Home</a>
     <p></p>
 
+
     <form action="/analysis/submit" method="post">
-        <label for="metric">Metric:</label>
+        <h3>Metric</h3>
+        <label for="metric"></label>
         <select id="metric" name="metric">
             <option value="size">size</option>
             <option value="ipv4">ipv4</option>
             <option value="port">port</option>
         </select>
 
-        <h2>Start Timestamp</h2>
-        <label for="num_packets">Number of Packets:</label>
-        <input type="number" id="num_packets" name="num_packets" min="1" max="10000" required>
+        <h3>Start Timestamp</h3>
+        <label for="start_timestamp"></label>
+        <input type="text" id="start_timestamp" name="start_timestamp" required
+            pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}"> YYYY-MM-DD HH:MM:SS.SSSSSSSSS
 
-        <button type="submit">Submit</button>
+        <h3>End Timestamp</h3>
+        <label for="end_timestamp"></label>
+        <input type="text" id="end_timestamp" name="end_timestamp" required
+            pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}"> YYYY-MM-DD HH:MM:SS.SSSSSSSSS
+
+        <h3>Interval</h3>
+        <label for="interval_unit"></label>
+        <input type="number" id="interval_unit" name="interval_unit"> (Seconds)
+
+        <p>
+            <button type="submit" class="button">Submit</button>
+        </p>
     </form>
 
 </body>

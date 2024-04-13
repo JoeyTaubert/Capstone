@@ -155,6 +155,14 @@ async fn analysis_page() -> Html<String> {
     }
 }
 
+async fn submit_analysis() {
+    // state logic
+    
+    // Logic to check selected metric and call proper compute function
+
+    
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize Handlebars
@@ -188,7 +196,8 @@ async fn main() {
         .route("/capture/edit.html", get(capture_edit_settings))
         .route("/capture/start.html", get(init_capture))
         .route("/capture/submit", post(submit_capture))
-        .route("/analysis.html", get (analysis_page))
+        .route("/analysis.html", get(analysis_page))
+        .route("/analysis/submit", post(submit_analysis))
         .layer(Extension(capture_config.clone()))
         .layer(Extension(handlebars))
         .with_state(capture_config.clone());
