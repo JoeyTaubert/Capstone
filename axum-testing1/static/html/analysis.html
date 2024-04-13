@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Forecasting | Capture</title>
+    <title>Network Forecasting | Analysis</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,17 +42,23 @@
 </head>
 
 <body>
-    <h1>Capture Packets</h1>
-    <a href="/capture/edit.html" class="button">Edit Capture Settings</a>
-    <p>
-        Capture is {{ cap_state }}
-    </p>
-    <a href="/capture/start.html" class="button">Start Capture</a>
-    
-    <!--- 
-    
-    <a href="/capture/restart.html" class="button">Restart Capture</a>
-    <a href="/capture/stop.html" class="button">Stop Capture</a> 
-    
-    -->
+    <h1>Analyze Packets</h1>
+    <a href="/">Home</a>
+    <p></p>
+
+    <form action="/analysis/submit" method="post">
+        <label for="metric">Metric:</label>
+        <select id="metric" name="metric">
+            <option value="size">size</option>
+            <option value="ipv4">ipv4</option>
+            <option value="port">port</option>
+        </select>
+
+        <h2>Start Timestamp</h2>
+        <label for="num_packets">Number of Packets:</label>
+        <input type="number" id="num_packets" name="num_packets" min="1" max="10000" required>
+
+        <button type="submit">Submit</button>
+    </form>
+
 </body>

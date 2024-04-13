@@ -145,6 +145,16 @@ async fn init_capture(State(state): State<CaptureConfig>) -> impl IntoResponse {
 
 //async fn stop_capture() {}
 
+async fn analysis_page() -> Html<String> {
+    match tokio::fs::read_to_string("static/html/analysis.html").await {
+        Ok(html_content) => Html(html_content),
+        Err(e) => {
+            println!("{}", e);
+            Html("Error loading the page".to_string())
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize Handlebars
@@ -177,8 +187,9 @@ async fn main() {
         .route("/capture.html", get(capture_page))
         .route("/capture/edit.html", get(capture_edit_settings))
         .route("/capture/start.html", get(init_capture))
-        .layer(Extension(capture_config.clone()))
         .route("/capture/submit", post(submit_capture))
+        .route("/analysis.html", get (analysis_page))
+        .layer(Extension(capture_config.clone()))
         .layer(Extension(handlebars))
         .with_state(capture_config.clone());
 

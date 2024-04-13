@@ -293,31 +293,64 @@ impl NNetwork {
 }
 
 pub fn main() {
-    // Echo Request/Reply PoC
+    // Packet Size PoC
+
+    // inputs
     let inputs = vec![
-        vec![8.0, 0.0], //x0023 has the code for echo request/reply. Request is 08 and replies are 00
-        vec![0.0, 8.0], // Could extend these into a list to include sequence numbers as well
+        vec![510.0, 469.0, 520.0, 475.0], //inputs for dataset 1
+        vec![329.0, 540.0, 420.0, 480.0], //inputs for dataset 2
     ];
 
-    // target values
-    let targets = vec![vec![8.0], vec![0.0]];
+    // targets
 
-    // train network
-    let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
+    let targets = vec![
+        vec![515.0, 475.0, 540.0, 446.0], // targets for dataset 1
+        vec![380.0, 450.0, 348.0, 514.0], // targets for dataset 2
+    ];
+
+    // train
+
+    let mut nnetwork = NNetwork::new(vec![4, 8, 12, 8, 4], SIGMOID, 1.0);
 
     nnetwork.train(inputs, targets, 10000);
 
-    // test the neural network with the following inputs
-    println!("\n0 = Echo REPLY");
-    println!("1 = Echo REQUEST");
+    // use the neural network using real data to get a prediction value
+
+    let test_inputs = Matrix::from(vec![450.0, 400.0, 510.0, 360.0]);
+    let output = nnetwork
+        .feed_forward(Matrix::from(vec![450.0, 400.0, 510.0, 360.0]))
+        .data;
+
     println!(
-        "What comes after echo reply? {:?}",
-        nnetwork.feed_forward(Matrix::from(vec![8.0, 0.0])).data
+        "Prediction for the dataset {:?} is {:?}",
+        &test_inputs, output
     );
-    println!(
-        "What comes after echo request? {:?}",
-        nnetwork.feed_forward(Matrix::from(vec![0.0, 8.0])).data
-    );
+
+    //// Echo Request/Reply PoC
+    //let inputs = vec![
+    //    vec![8.0, 0.0], //x0023 has the code for echo request/reply. Request is 08 and replies are 00
+    //    vec![0.0, 8.0], // Could extend these into a list to include sequence numbers as well
+    //];
+    //
+    //// target values
+    //let targets = vec![vec![8.0], vec![0.0]];
+    //
+    //// train network
+    //let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
+    //
+    //nnetwork.train(inputs, targets, 10000);
+    //
+    //// test the neural network with the following inputs
+    //println!("\n0 = Echo REPLY");
+    //println!("1 = Echo REQUEST");
+    //println!(
+    //    "What comes after echo reply? {:?}",
+    //    nnetwork.feed_forward(Matrix::from(vec![8.0, 0.0])).data
+    //);
+    //println!(
+    //    "What comes after echo request? {:?}",
+    //    nnetwork.feed_forward(Matrix::from(vec![0.0, 8.0])).data
+    //);
 
     //// XOR PoC
     //let inputs = vec![

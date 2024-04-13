@@ -63,25 +63,25 @@
 </head>
 
 <body>
+    <a href="/capture.html" class="button">Back</a>
     <div class="container">
         <h1>Capture Packets</h1>
-        <form action="/submit-interface" method="post">
+        <form action="/capture/submit" method="post">
             <label for="interface">Interface:</label>
             <select id="interface" name="interface">
                 {{#each interfaces}}
                 <option value="{{this}}">{{this}}</option>
                 {{/each}}
             </select>
-            <button type="submit">Submit</button>
-        </form>
 
-        <form action="/submit-packets" method="post">
             <h2>Number of Packets to Capture</h2>
             <label for="num_packets">Number of Packets:</label>
             <input type="number" id="num_packets" name="num_packets" min="1" max="10000" required>
+
             <button type="submit">Submit</button>
         </form>
     </div>
 </body>
+
 
 </html>

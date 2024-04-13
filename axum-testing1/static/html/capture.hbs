@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Forecasting | Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            outline: none;
+            color: #fff;
+            background-color: #0056b3;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 9px #999;
+        }
+
+        .button:hover {
+            background-color: #3e8e41
+        }
+
+        .button:active {
+            background-color: #3e8e41;
+            box-shadow: 0 5px #666;
+            transform: translateY(4px);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Capture Packets</h1>
+    <a href="/">Home</a>
+    <p></p>
+
+    <p>
+        Capture status: {{ is_running }}
+    </p>
+    <p>
+        Selected interface: {{ interface }}
+    </p>
+    <p>
+        Number of packets to capture: {{ num_packets }}
+    </p>
+    <a href="/capture/edit.html" class="button">Edit Capture Settings</a>
+    <a href="/capture/start.html" class="button">Start Capture</a>
+
+    <!--- 
+    
+    <a href="/capture/restart.html" class="button">Restart Capture</a>
+    <a href="/capture/stop.html" class="button">Stop Capture</a> 
+    
+    -->
+</body>
