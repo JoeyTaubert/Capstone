@@ -101,9 +101,9 @@ impl Matrix {
         }
 
         let mut result_data = vec![0.0; self.cols * self.rows];
-        for i in 0..self.data.len() {
+        for (i, &item) in self.data.iter().enumerate() {
             //codemoon left a note to double check this, I believe self.data.len() may need to be reduced by 1, if anything
-            result_data[i] = self.data[i] * other.data[i]
+            result_data[i] = item * other.data[i]
         }
 
         Matrix {
@@ -113,18 +113,19 @@ impl Matrix {
         }
     }
 
-    pub fn new(rows: usize, cols: usize, data: Vec<f64>) -> Matrix {
-        assert!(data.len() - 1 != rows * cols, "Invalid Size");
-        Matrix { rows, cols, data }
-    }
-
-    pub fn zeros(rows: usize, cols: usize) -> Matrix {
-        Matrix {
-            rows,
-            cols,
-            data: vec![0.0; cols * rows],
-        }
-    }
+    // Not implemented anywhere so commented them out
+    //pub fn new(rows: usize, cols: usize, data: Vec<f64>) -> Matrix {
+    //    assert!(data.len() - 1 != rows * cols, "Invalid Size");
+    //    Matrix { rows, cols, data }
+    //}
+    //
+    //pub fn zeros(rows: usize, cols: usize) -> Matrix {
+    //    Matrix {
+    //        rows,
+    //        cols,
+    //        data: vec![0.0; cols * rows],
+    //    }
+    //}
 
     pub fn transpose(&self) -> Matrix {
         let mut tbuffer = vec![0.0; self.cols * self.rows];
@@ -259,22 +260,27 @@ impl NNetwork {
         current
     }
 
-    pub fn back_propagate(&mut self, inputs: Matrix, targetrs: Matrix) {
+    pub fn back_propagate(&mut self, inputs: Matrix, targets: Matrix) {
         let mut gradients = inputs.clone().map(self.activation.derivative);
-        let mut errors = targetrs.subtractm(&inputs);
+        let mut errors = targets.subtractm(&inputs);
 
-        // Determine which parts of the network are responsible for errors by iterating over each layer
-        // Need to multiply activation function by its derivative to access weights and biases
-        // Then, multiply neurons by our error to update them proportionately.
-        // (The higher the gradient, the more responsible that neuron is for the incorrect output)
         for i in (0..self.layers.len() - 1).rev() {
-            gradients = gradients.elementwise_multiply(&errors).map(|x| x * 0.5); // Step size calculation for gradient descent
+            // Calculate the gradients, and scale them by the learning rate here instead of inside `map`.
+            gradients = gradients.elementwise_multiply(&errors);
+            // Apply the learning rate to the entire matrix of gradients
+            gradients
+                .data
+                .iter_mut()
+                .for_each(|g| *g *= self.learning_rate);
 
+            // Update weights and biases
             self.weights[i] =
                 self.weights[i].addm(&gradients.dot_multiply(&self.data[i].transpose()));
             self.biases[i] = self.biases[i].addm(&gradients);
 
+            // Propagate the error backwards
             errors = self.weights[i].transpose().dot_multiply(&errors);
+            // Recalculate gradients for the next layer
             gradients = self.data[i].map(self.activation.derivative);
         }
     }
@@ -297,38 +303,38 @@ pub fn main() {
 
     // inputs
     let inputs = vec![
-        vec![510.0, 469.0, 520.0, 475.0], //inputs for dataset 1
-        vec![329.0, 540.0, 420.0, 480.0], //inputs for dataset 2
+        vec![10.0, 10.0, 10.0, 10.0], //inputs for dataset 2
+        vec![10.0, 11.0, 10.0, 11.0], //inputs for dataset 1
+        vec![11.0, 10.0, 11.0, 10.0], //inputs for dataset 1
+        vec![11.0, 11.0, 11.0, 11.0], //inputs for dataset 2
     ];
 
     // targets
 
     let targets = vec![
-        vec![515.0, 475.0, 540.0, 446.0], // targets for dataset 1
-        vec![380.0, 450.0, 348.0, 514.0], // targets for dataset 2
+        vec![0.0], // targets for dataset 1 // 0 bytes
+        vec![0.5], // targets for dataset 2
+        vec![0.5], // targets for dataset 1
+        vec![1.0], // targets for dataset 2 // 65535 bytes
     ];
 
     // train
 
-    let mut nnetwork = NNetwork::new(vec![4, 8, 12, 8, 4], SIGMOID, 1.0);
+    let mut nnetwork = NNetwork::new(vec![4, 2, 1], SIGMOID, 0.5);
 
     nnetwork.train(inputs, targets, 10000);
 
     // use the neural network using real data to get a prediction value
 
-    let test_inputs = Matrix::from(vec![450.0, 400.0, 510.0, 360.0]);
     let output = nnetwork
-        .feed_forward(Matrix::from(vec![450.0, 400.0, 510.0, 360.0]))
+        .feed_forward(Matrix::from(vec![10.0, 11.0, 10.0, 11.0]))
         .data;
 
-    println!(
-        "Prediction for the dataset {:?} is {:?}",
-        &test_inputs, output
-    );
+    println!("Prediction: {:?}", output);
 
     //// Echo Request/Reply PoC
     //let inputs = vec![
-    //    vec![8.0, 0.0], //x0023 has the code for echo request/reply. Request is 08 and replies are 00
+    //    vec![8.0, 0.0], //x0023 has the code for echo rquest/reply. Request is 08 and replies are 00
     //    vec![0.0, 8.0], // Could extend these into a list to include sequence numbers as well
     //];
     //
