@@ -31,6 +31,7 @@ struct CaptureContext {
     num_packets: u32,
 }
 
+/// for capture_config shared state
 #[derive(Clone, Deserialize, Default)]
 /// Struct for holding the capture parameters
 /// Could manually impl default for default values
@@ -39,10 +40,26 @@ struct CaptureParams {
     num_packets: u32,
 }
 
-// State tracking of the capture parameters for shared state
+/// for capture_config shared state
+/// State tracking of the capture parameters
 #[derive(Clone, Default)]
 struct CaptureConfig {
     capture_params: Arc<RwLock<CaptureParams>>, // Mutex/Rwlock for preventing multiple threads from writing to the data at once
+}
+
+/// for analysis_config shared state
+#[derive(Clone, Deserialize, Default)]
+struct AnalysisParams {
+    metric: String,
+    start_timestamp: String,
+    end_timestamp: String,
+    interval: u64,
+}
+
+/// for analysis_config shared state
+#[derive(Clone, Default)]
+struct AnalysisConfig {
+    analysis_params: Arc<RwLock<AnalysisParams>>,
 }
 
 // FUNCTIONS -=-=-=-=-=-=-=-=-=-=-=-=
@@ -155,12 +172,30 @@ async fn analysis_page() -> Html<String> {
     }
 }
 
-async fn submit_analysis() {
+async fn submit_analysis(
+    State(state): State<AnalysisConfig>,
+    Form(data): Form<AnalysisParams>,
+) -> Redirect {
     // state logic
-    
+    let mut params = state.analysis_params.write().await;
+    params.metric = data.metric;
+    params.start_timestamp = data.start_timestamp;
+    params.end_timestamp = data.end_timestamp;
+    params.interval = data.interval;
+    Redirect::to("/analysis.html")
     // Logic to check selected metric and call proper compute function
+}
 
-    
+async fn predictions_page() {
+    // Training the model (Inputs, targets, RNN creation, train)
+
+    // Feed forward w/ real input
+}
+
+/// Interacting with Mongo via the GUI (for convenience, not security)
+async fn mongo_page() {
+    // Querying Mongo via GUI
+    // db.metrics.find()
 }
 
 #[tokio::main]
@@ -189,6 +224,11 @@ async fn main() {
         capture_params: Arc::new(RwLock::new(CaptureParams::default())),
     };
 
+    // Shared state tracking for analysis parameters
+    let analysis_config = AnalysisConfig {
+        analysis_params: Arc::new(RwLock::new(AnalysisParams::default())),
+    };
+
     // Define app routes
     let app = Router::new()
         .route("/", get(index_page))
@@ -197,10 +237,13 @@ async fn main() {
         .route("/capture/start.html", get(init_capture))
         .route("/capture/submit", post(submit_capture))
         .route("/analysis.html", get(analysis_page))
-        .route("/analysis/submit", post(submit_analysis))
+        .route("/analysis/submit", post(submit_analysis)) // WIP
+        .route("/predictions.html", get(predictions_page)) // WIP
+        .route("/mongo.html", get(mongo_page)) // WIP (if time allows)
         .layer(Extension(capture_config.clone()))
         .layer(Extension(handlebars))
-        .with_state(capture_config.clone());
+        .with_state(capture_config.clone())
+        .with_state(analysis_config.clone()); // lock down shared states to only handlers that are expected to use them
 
     // Run app, listening on loopback only
     let listener = tokio::net::TcpListener::bind("127.0.0.1:8080")

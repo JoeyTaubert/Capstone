@@ -99,7 +99,7 @@
 
         <form action="/analysis/submit" method="post">
             <h3>Metric</h3>
-            <label for="metric">Metric:</label>
+            <label for="metric"></label>
             <select id="metric" name="metric">
                 <option value="size">size</option>
                 <option value="ipv4">ipv4</option>
@@ -107,20 +107,21 @@
             </select>
 
             <h3>Start Timestamp</h3>
-            <label for="start_timestamp">Start Timestamp:</label>
+            <label for="start_timestamp"></label>
             <input type="text" id="start_timestamp" name="start_timestamp" required
-                pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}">
+                pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}" placeholder="YYYY-MM-DD HH:MM:SS.SSSSSSSSS">
             <!-- YYYY-MM-DD HH:MM:SS.SSSSSSSSS -->
 
             <h3>End Timestamp</h3>
-            <label for="end_timestamp">End Timestamp:</label>
+            <label for="end_timestamp"></label>
             <input type="text" id="end_timestamp" name="end_timestamp" required
-                pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}">
+                pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{9}" placeholder="YYYY-MM-DD HH:MM:SS.SSSSSSSSS">
             <!-- YYYY-MM-DD HH:MM:SS.SSSSSSSSS -->
 
             <h3>Interval</h3>
-            <label for="interval_unit">Interval:</label>
-            <input type="number" id="interval_unit" name="interval_unit"> (Seconds)
+            <label for="interval_unit"></label>
+            <input type="number" id="interval_unit" name="interval_unit" placeholder="Seconds">
+            <!-- Seconds -->
 
             <p>
                 <button type="submit" class="button">Submit</button>
