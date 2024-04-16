@@ -12,12 +12,14 @@ pub struct Matrix {
 
 impl Matrix {
     pub fn randomm(rows: usize, cols: usize) -> Matrix {
+        // Initialize our data variable
         let mut rbuffer = Vec::<f64>::with_capacity(rows * cols);
 
         // Generate a random number for each value that will be in the Matrix
         for _ in 0..rows * cols {
             let num = rand::thread_rng().gen_range(0.0..1.0);
 
+            // Push each randomized number to the list
             rbuffer.push(num);
         }
 
@@ -30,18 +32,22 @@ impl Matrix {
     }
 
     pub fn addm(&self, other: &Matrix) -> Matrix {
+        // Check if we can add these Matrices
         if self.rows != other.rows || self.cols != other.cols {
             panic!("Attempted to add matrix of incorrect dimensions") //// REPLACE THIS FOR PRODUCTION
         }
 
+        // Initialize data buffer for resulting Matrix
         let mut abuffer = Vec::<f64>::with_capacity(self.rows * self.cols);
 
+        // Do the addition
         for i in 0..self.data.len() {
             let result = self.data[i] + other.data[i];
 
             abuffer.push(result)
         }
 
+        // Build the matrix and return it
         Matrix {
             rows: self.rows,
             cols: self.cols,
@@ -78,16 +84,21 @@ impl Matrix {
 
         let mut result_data = vec![0.0; self.rows * other.cols];
 
+        // Iterate over the rows of matrix A
         for i in 0..self.rows {
+            // Iterate over the columns of matrix B
             for j in 0..other.cols {
-                let mut sum = 0.0;
+                let mut sum = 0.0; // Initialize our sum float and reset each iteration
+                                   // Sum the elements of the current row of Matrix A and the corresponding column of Matrix B
                 for k in 0..self.cols {
                     sum += self.data[i * self.cols + k] * other.data[k * other.cols + j];
                 }
+                // Store the calculated dot product in its respective position in the resulting matrix
                 result_data[i * other.cols + j] = sum;
             }
         }
 
+        // Build and return the resulting matrix
         Matrix {
             rows: self.rows,
             cols: other.cols,
@@ -100,12 +111,15 @@ impl Matrix {
             panic!("Attempted to multiply by Matrix of incorrect dimensions") //// REPLACE FOR PROD
         }
 
+        // Initialize resulting vector to hold data
         let mut result_data = vec![0.0; self.cols * self.rows];
+
+        // Multiply each element of matrix A against its corresponding element of matrix B
         for (i, &item) in self.data.iter().enumerate() {
-            //codemoon left a note to double check this, I believe self.data.len() may need to be reduced by 1, if anything
             result_data[i] = item * other.data[i]
         }
 
+        // Build and return the resulting matrix
         Matrix {
             rows: self.rows,
             cols: self.cols,
@@ -128,14 +142,19 @@ impl Matrix {
     //}
 
     pub fn transpose(&self) -> Matrix {
+        // Initialize a matrix of 0's, dimensions based on self
         let mut tbuffer = vec![0.0; self.cols * self.rows];
 
+        // Iterate over the rows
         for i in 0..self.rows {
+            // Iterate over the columns
             for j in 0..self.cols {
+                // Perform the transposition
                 tbuffer[j * self.rows + i] = self.data[i * self.cols + j];
             }
         }
 
+        // Build the new matrix to be returned
         Matrix {
             rows: self.cols,
             cols: self.rows,
@@ -144,14 +163,17 @@ impl Matrix {
     }
 
     pub fn map(&mut self, func: fn(&f64) -> f64) -> Matrix {
+        // Initialize resulting matrix
         let mut result = Matrix {
             rows: self.rows,
             cols: self.cols,
             data: Vec::with_capacity(self.data.len()),
         };
 
-        result.data.extend(self.data.iter().map(|&val| func(&val))); //iterates over each element of the matrix and applies the function
+        // Iterate over each element of the matrix and apply the provided function
+        result.data.extend(self.data.iter().map(|&val| func(&val)));
 
+        // Returns the matrix
         result
     }
 }
@@ -302,61 +324,72 @@ pub fn main() {
     // Packet Size PoC
 
     // inputs
+    // these are calculated size of packets (five 10 second intervals)
     let inputs = vec![
-        vec![10.0, 10.0, 10.0, 10.0], //inputs for dataset 2
-        vec![10.0, 11.0, 10.0, 11.0], //inputs for dataset 1
-        vec![11.0, 10.0, 11.0, 10.0], //inputs for dataset 1
-        vec![11.0, 11.0, 11.0, 11.0], //inputs for dataset 2
+        vec![5124.0, 5487.0, 4806.0, 4968.0, 5082.0],
+        vec![4968.0, 3672.0, 5070.0, 4968.0, 3312.0],
+        vec![4968.0, 6058.0, 5180.0, 5290.0, 3312.0],
+        vec![4968.0, 3612.0, 4968.0, 4968.0, 3312.0],
+        vec![4968.0, 3714.0, 4968.0, 4968.0, 11808.0],
     ];
 
     // targets
-
+    // This is the target value of the dataset (the sixth 10 second interval)
     let targets = vec![
-        vec![0.0], // targets for dataset 1 // 0 bytes
-        vec![0.5], // targets for dataset 2
-        vec![0.5], // targets for dataset 1
-        vec![1.0], // targets for dataset 2 // 65535 bytes
+        vec![3938.0],
+        vec![4968.0],
+        vec![4968.0],
+        vec![4968.0],
+        vec![6384.0],
     ];
+
+    // initialize the RNN
+    let mut nnetwork = NNetwork::new(vec![5, 10, 5, 1], SIGMOID, 0.5);
+
+    // train
+    nnetwork.train(inputs, targets, 10000);
+
+    // feed forward with real inputs (five 10 second intervals)
+    // output is predicting the sixth
+    let output = nnetwork
+        .feed_forward(Matrix::from(vec![4968.0, 3714.0, 4968.0, 4968.0, 3938.0]))
+        .data;
+
+    // result
+    println!("Prediction: {:?}", output);
+
+    // Numbers PoC
+
+    // inputs
+    //let inputs = vec![
+    //    vec![1.0, 1.0], //inputs for dataset 2
+    //    vec![2.0, 2.0], //inputs for dataset 1
+    //    vec![3.0, 3.0], //inputs for dataset 1
+    //    vec![4.0, 4.0], //inputs for dataset 2
+    //    vec![5.0, 5.0],
+    //];
+
+    // targets
+
+    //let targets = vec![
+    //    vec![0.0],  // targets for dataset 1 // 0 bytes
+    //    vec![0.25], // targets for dataset 2
+    //    vec![0.5],  // targets for dataset 1
+    //    vec![0.75], // targets for dataset 2 // 65535 bytes
+    //    vec![1.0],
+    //];
 
     // train
 
-    let mut nnetwork = NNetwork::new(vec![4, 2, 1], SIGMOID, 0.5);
+    //let mut nnetwork = NNetwork::new(vec![2, 2, 1], SIGMOID, 0.5);
 
-    nnetwork.train(inputs, targets, 10000);
+    //nnetwork.train(inputs, targets, 10000);
 
     // use the neural network using real data to get a prediction value
 
-    let output = nnetwork
-        .feed_forward(Matrix::from(vec![10.0, 11.0, 10.0, 11.0]))
-        .data;
+    //let output = nnetwork.feed_forward(Matrix::from(vec![3.0, 3.0])).data;
 
-    println!("Prediction: {:?}", output);
-
-    //// Echo Request/Reply PoC
-    //let inputs = vec![
-    //    vec![8.0, 0.0], //x0023 has the code for echo rquest/reply. Request is 08 and replies are 00
-    //    vec![0.0, 8.0], // Could extend these into a list to include sequence numbers as well
-    //];
-    //
-    //// target values
-    //let targets = vec![vec![8.0], vec![0.0]];
-    //
-    //// train network
-    //let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
-    //
-    //nnetwork.train(inputs, targets, 10000);
-    //
-    //// test the neural network with the following inputs
-    //println!("\n0 = Echo REPLY");
-    //println!("1 = Echo REQUEST");
-    //println!(
-    //    "What comes after echo reply? {:?}",
-    //    nnetwork.feed_forward(Matrix::from(vec![8.0, 0.0])).data
-    //);
-    //println!(
-    //    "What comes after echo request? {:?}",
-    //    nnetwork.feed_forward(Matrix::from(vec![0.0, 8.0])).data
-    //);
+    //println!("Prediction: {:?}", output);
 
     //// XOR PoC
     //let inputs = vec![

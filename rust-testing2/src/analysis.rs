@@ -239,8 +239,8 @@ pub async fn insert_result(
     let collection: Collection<Document> = database.collection(&table);
 
     let new_doc = doc! {
-        "start_timestamp": &start_timestamp,
-        "end_timestamp": &end_timestamp,
+        "start_timestamp": &start_timestamp.trim(), //trims off newline character '\n'
+        "end_timestamp": &end_timestamp.trim(),
         "size": &data,
     };
 
