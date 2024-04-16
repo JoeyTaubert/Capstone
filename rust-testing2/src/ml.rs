@@ -325,38 +325,50 @@ pub fn main() {
 
     // inputs
     // these are calculated size of packets (five 10 second intervals)
+    //let inputs = vec![
+    //    vec![5124.0, 5487.0, 4806.0, 4968.0, 5082.0],
+    //    vec![4968.0, 3672.0, 5070.0, 4968.0, 3312.0],
+    //    vec![4968.0, 6058.0, 5180.0, 5290.0, 3312.0],
+    //    vec![4968.0, 3612.0, 4968.0, 4968.0, 3312.0],
+    //    vec![4968.0, 3714.0, 4968.0, 4968.0, 11808.0],
+    //];
+
     let inputs = vec![
-        vec![5124.0, 5487.0, 4806.0, 4968.0, 5082.0],
-        vec![4968.0, 3672.0, 5070.0, 4968.0, 3312.0],
-        vec![4968.0, 6058.0, 5180.0, 5290.0, 3312.0],
-        vec![4968.0, 3612.0, 4968.0, 4968.0, 3312.0],
-        vec![4968.0, 3714.0, 4968.0, 4968.0, 11808.0],
+        vec![0.2133, 0.2133, 0.1758, 0.1949, 0.2083],
+        vec![0.1949, 0.0424, 0.2069, 0.1949, 0.0000],
+        vec![0.1949, 0.3232, 0.2199, 0.2328, 0.0000],
+        vec![0.1949, 0.0353, 0.1949, 0.1949, 0.0000],
+        vec![0.1949, 0.0473, 0.1949, 0.1949, 1.0000],
     ];
 
     // targets
     // This is the target value of the dataset (the sixth 10 second interval)
     let targets = vec![
-        vec![3938.0],
-        vec![4968.0],
-        vec![4968.0],
-        vec![4968.0],
-        vec![6384.0],
+        vec![0.2133],
+        vec![0.1949],
+        vec![0.1949],
+        vec![0.1949],
+        vec![0.3616],
     ];
 
     // initialize the RNN
-    let mut nnetwork = NNetwork::new(vec![5, 10, 5, 1], SIGMOID, 0.5);
+    let mut nnetwork = NNetwork::new(vec![5, 5, 1], SIGMOID, 1.0);
 
     // train
     nnetwork.train(inputs, targets, 10000);
 
     // feed forward with real inputs (five 10 second intervals)
     // output is predicting the sixth
+    //
     let output = nnetwork
-        .feed_forward(Matrix::from(vec![4968.0, 3714.0, 4968.0, 4968.0, 3938.0]))
+        .feed_forward(Matrix::from(vec![0.2133, 0.2560, 0.1758, 0.1949, 0.2083]))
         .data;
 
     // result
     println!("Prediction: {:?}", output);
+    println!("Actual: 0.5");
+    println!("Prediction (Bytes): {}", output[0] * 25490.0);
+    println!("Actual: 4968.0");
 
     // Numbers PoC
 

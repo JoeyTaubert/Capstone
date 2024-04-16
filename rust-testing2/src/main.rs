@@ -19,8 +19,8 @@ fn main() {
         stdin().read_line(&mut input).expect("Failed to read line");
         match input.as_str().trim() {
             "0" => flag = false,
-            "1" => cap::main(), // need to spawn new async task to handle this
-            "2" => analysis::main(),
+            "1" => (), //cap::main(), // need to spawn new async task to handle this
+            "2" => (), //analysis::main(),
             "3" => ml::main(),
             _ => println!("\nInvalid input.\n"),
         };
