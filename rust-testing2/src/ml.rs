@@ -242,11 +242,13 @@ impl NNetwork {
 
         // Iterate over layers of the neural network
         for i in 00..layers.len() - 1 {
+            // Initialize all weights with a random value
             weights.push(Matrix::randomm(layers[i + 1], layers[i]));
+            // Initialize all biases with a random value
             biases.push(Matrix::randomm(layers[i + 1], 1));
         }
 
-        // Initialize the network
+        // Return the network
         NNetwork {
             layers,
             weights,
@@ -258,38 +260,49 @@ impl NNetwork {
     }
 
     pub fn feed_forward(&mut self, inputs: Matrix) -> Matrix {
+        //Check to see if we have enough neurons in the first layer to accept all inputs
         assert!(
             self.layers[0] == inputs.data.len(),
             "Invalid number of inputs to feed forward"
         );
 
-        // Holds values for next layer of neural network
+        // Grab a mutable version of inputs
         let mut current = inputs;
 
+        // Pass the inputs to the data field of our neural network
         self.data = vec![current.clone()];
 
-        // Iterate over all layers
+        // Iterate over the layers of the network
         for i in 0..self.layers.len() - 1 {
-            // Apply feed forward algorithm
-            current = self.weights[i]
+            // Apply feed forward algorithm and reassign output to current
+            current = self.weights[i] // Access the weights of the current layer
+                // Multiply the inputs/datapoints by the weights
                 .dot_multiply(&current)
+                // Add the biases
                 .addm(&self.biases[i])
+                // Use the activation function and return floats as outputs
                 .map(self.activation.function);
 
             // Return output of network
             self.data.push(current.clone());
         }
+        // return the outputs, this will be a vector of f64's
+        // If the last layer has one neuron, one f64 value will be in the vector
         current
     }
 
     pub fn back_propagate(&mut self, inputs: Matrix, targets: Matrix) {
+        // Initialize the gradient matrix with the model's outputs, and undo the feed forward process
         let mut gradients = inputs.clone().map(self.activation.derivative);
+        // Initialize the errors matrix by finding the difference between the outputs and the target values
         let mut errors = targets.subtractm(&inputs);
 
+        // Iterate over the layers of the network in reverse
         for i in (0..self.layers.len() - 1).rev() {
-            // Calculate the gradients, and scale them by the learning rate here instead of inside `map`.
+            // Calculate the error gradient
             gradients = gradients.elementwise_multiply(&errors);
-            // Apply the learning rate to the entire matrix of gradients
+
+            // Apply the learning rate to the gradients matrix
             gradients
                 .data
                 .iter_mut()
@@ -298,6 +311,7 @@ impl NNetwork {
             // Update weights and biases
             self.weights[i] =
                 self.weights[i].addm(&gradients.dot_multiply(&self.data[i].transpose()));
+
             self.biases[i] = self.biases[i].addm(&gradients);
 
             // Propagate the error backwards
@@ -308,12 +322,16 @@ impl NNetwork {
     }
 
     pub fn train(&mut self, inputs: Vec<Vec<f64>>, targets: Vec<Vec<f64>>, epochs: u32) {
+        // Iterate over each epoch
         for i in 1..=epochs {
             if epochs < 100 || i % (epochs / 100) == 0 {
                 println!("Epoch {} of {}", i, epochs);
             }
+            // Iterate over each input vector
             for j in 0..inputs.len() {
+                // Feed forward with current input vector
                 let outputs = self.feed_forward(Matrix::from(inputs[j].clone()));
+                // Tune weights and biases based on the current target
                 self.back_propagate(outputs, Matrix::from(targets[j].clone()));
             }
         }
