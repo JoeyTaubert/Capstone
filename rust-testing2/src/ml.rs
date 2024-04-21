@@ -339,107 +339,212 @@ impl NNetwork {
 }
 
 pub fn main() {
+    // DNS Exfil Detection PoC
+
+    // inputs (training on good DNS traffic, bad DNS traffic)
+    let inputs = vec![
+        //   length, entropy of domain, TCP or UDP
+        vec![0.01, 0.01, 0.0], // small length, low entropy, UDP
+        vec![0.01, 0.5, 0.0],
+        vec![0.01, 0.6, 0.0],
+        vec![0.01, 1.0, 0.0], // small length, high entropy, UDP
+        vec![0.5, 0.01, 0.0], // med legnth, low entropy, UDP
+        vec![0.5, 0.5, 0.0],
+        vec![0.5, 1.0, 0.0], // med legnth, high entropy, UDP
+        vec![0.7, 0.01, 0.0],
+        vec![0.7, 1.0, 0.0],
+        vec![1.0, 0.01, 0.0],  // high length, low entopy, UDP
+        vec![1.0, 1.0, 0.0],   // high length, high entropy, UDP
+        vec![0.01, 0.01, 1.0], // small length, low entropy, TCP
+        vec![0.01, 0.5, 1.0],  // small length, med entropy, TCP
+        vec![0.01, 1.0, 1.0],  // small length, high entropy, TCP
+        vec![1.0, 0.01, 1.0],  // high length, low entropy, TCP
+        vec![1.0, 1.0, 1.0],   // high length, high entropy, TCP
+    ];
+
+    // targets (0 for good traffic, 1 for bad traffic)
+    let targets = vec![
+        vec![0.0],
+        vec![0.10],
+        vec![0.25],
+        vec![1.0],
+        vec![0.1],
+        vec![0.25],
+        vec![1.0],
+        vec![0.5],
+        vec![1.0],
+        vec![1.0],
+        vec![1.0],
+        vec![0.5],
+        vec![1.0],
+        vec![1.0],
+        vec![1.0],
+        vec![1.0],
+    ];
+
+    // train
+    let mut nnetwork = NNetwork::new(vec![3, 6, 3, 1], SIGMOID, 1.0);
+    nnetwork.train(inputs, targets, 10000);
+
+    // feed forward and display results
+    println!(
+        "Suspicion rating: {:?}",
+        nnetwork
+            .feed_forward(Matrix::from(vec![0.586, 0.10, 0.0]))
+            .data
+    );
+
+    /*
     // Packet Size PoC
 
     // inputs
     // these are calculated size of packets (five 10 second intervals)
-    //let inputs = vec![
-    //    vec![5124.0, 5487.0, 4806.0, 4968.0, 5082.0],
-    //    vec![4968.0, 3672.0, 5070.0, 4968.0, 3312.0],
-    //    vec![4968.0, 6058.0, 5180.0, 5290.0, 3312.0],
-    //    vec![4968.0, 3612.0, 4968.0, 4968.0, 3312.0],
-    //    vec![4968.0, 3714.0, 4968.0, 4968.0, 11808.0],
-    //];
-
     let inputs = vec![
-        vec![0.2133, 0.2133, 0.1758, 0.1949, 0.2083],
-        vec![0.1949, 0.0424, 0.2069, 0.1949, 0.0000],
-        vec![0.1949, 0.3232, 0.2199, 0.2328, 0.0000],
-        vec![0.1949, 0.0353, 0.1949, 0.1949, 0.0000],
-        vec![0.1949, 0.0473, 0.1949, 0.1949, 1.0000],
+        vec![5124.0, 5487.0, 4806.0, 4968.0, 5082.0],
+        vec![4968.0, 3672.0, 5070.0, 4968.0, 3312.0],
+        vec![4968.0, 6058.0, 5180.0, 5290.0, 3312.0],
+        vec![4968.0, 3612.0, 4968.0, 4968.0, 3312.0],
+        vec![4968.0, 3714.0, 4968.0, 4968.0, 11808.0],
     ];
+
+    // Define scale
+    //let max_val = 11808.0;
+    //let min_val = 3312.0;
+    let max_val = 12000.0;
+    let min_val = 0.0;
+
+    // Scale inputs
+    let mut scaled_inputs = vec![];
+
+    for i in &inputs {
+        let mut temp_vec = vec![];
+        for j in i {
+            let scaled_j = (j - min_val) / (max_val - min_val);
+            temp_vec.push(scaled_j);
+        }
+        scaled_inputs.push(temp_vec);
+    }
 
     // targets
     // This is the target value of the dataset (the sixth 10 second interval)
     let targets = vec![
-        vec![0.2133],
-        vec![0.1949],
-        vec![0.1949],
-        vec![0.1949],
-        vec![0.3616],
+        vec![3938.0],
+        vec![4968.0],
+        vec![4968.0],
+        vec![4968.0],
+        vec![6384.0],
     ];
 
+    // scale targets
+    let mut scaled_targets = vec![];
+
+    for i in &targets {
+        let mut temp_vec2 = vec![];
+        for j in i {
+            let scaled_j = (j - min_val) / (max_val - min_val);
+            temp_vec2.push(scaled_j);
+        }
+        scaled_targets.push(temp_vec2);
+    }
+
     // initialize the RNN
-    let mut nnetwork = NNetwork::new(vec![5, 5, 1], SIGMOID, 1.0);
+    let mut nnetwork = NNetwork::new(vec![5, 10, 10, 10, 5, 2, 1], SIGMOID, 1.0);
 
     // train
-    nnetwork.train(inputs, targets, 10000);
+    nnetwork.train(scaled_inputs, scaled_targets, 10000);
 
     // feed forward with real inputs (five 10 second intervals)
     // output is predicting the sixth
-    //
-    let output = nnetwork
-        .feed_forward(Matrix::from(vec![0.2133, 0.2560, 0.1758, 0.1949, 0.2083]))
-        .data;
+    let ff_inputs = vec![4968.0, 3714.0, 4968.0, 4968.0, 3938.0];
+
+    // scale inputs
+    let mut ff_inputs_scaled = vec![];
+
+    for i in &ff_inputs {
+        let scaled_i = (i - min_val) / (max_val - min_val);
+        ff_inputs_scaled.push(scaled_i);
+    }
+
+    let output = nnetwork.feed_forward(Matrix::from(ff_inputs_scaled)).data;
 
     // result
     println!("Prediction: {:?}", output);
-    println!("Actual: 0.5");
-    println!("Prediction (Bytes): {}", output[0] * 25490.0);
+    println!("Actual: 0.413");
+    println!(
+        "Prediction (Bytes): {}",
+        min_val + output[0] * (max_val - min_val)
+    );
     println!("Actual: 4968.0");
+    */
 
-    // Numbers PoC
+    /*
+    Numbers PoC
 
     // inputs
-    //let inputs = vec![
-    //    vec![1.0, 1.0], //inputs for dataset 2
-    //    vec![2.0, 2.0], //inputs for dataset 1
-    //    vec![3.0, 3.0], //inputs for dataset 1
-    //    vec![4.0, 4.0], //inputs for dataset 2
-    //    vec![5.0, 5.0],
-    //];
+    let inputs = vec![
+        vec![1.0, 1.0], //inputs for dataset 2
+        vec![2.0, 2.0], //inputs for dataset 1
+        vec![3.0, 3.0], //inputs for dataset 1
+        vec![4.0, 4.0], //inputs for dataset 2
+        vec![5.0, 5.0],
+    ];
 
-    // targets
+    //targets
 
-    //let targets = vec![
-    //    vec![0.0],  // targets for dataset 1 // 0 bytes
-    //    vec![0.25], // targets for dataset 2
-    //    vec![0.5],  // targets for dataset 1
-    //    vec![0.75], // targets for dataset 2 // 65535 bytes
-    //    vec![1.0],
-    //];
+    let targets = vec![
+        vec![0.0],  // targets for dataset 1 // 0 bytes
+        vec![0.25], // targets for dataset 2
+        vec![0.5],  // targets for dataset 1
+        vec![0.75], // targets for dataset 2 // 65535 bytes
+        vec![1.0],
+    ];
 
     // train
 
-    //let mut nnetwork = NNetwork::new(vec![2, 2, 1], SIGMOID, 0.5);
+    let mut nnetwork = NNetwork::new(vec![2, 2, 1], SIGMOID, 0.5);
 
-    //nnetwork.train(inputs, targets, 10000);
+    nnetwork.train(inputs, targets, 10000);
 
     // use the neural network using real data to get a prediction value
 
-    //let output = nnetwork.feed_forward(Matrix::from(vec![3.0, 3.0])).data;
+    let output = nnetwork.feed_forward(Matrix::from(vec![3.0, 3.0])).data;
 
-    //println!("Prediction: {:?}", output);
+    println!("Prediction: {:?}", output);
+    */
 
-    //// XOR PoC
-    //let inputs = vec![
-    //    vec![0.0, 0.0],
-    //    vec![0.0, 1.0],
-    //    vec![1.0, 0.0],
-    //    vec![1.0, 1.0],
-    //];
-    //
-    //// target values
-    //let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
-    //
-    //// train network
-    //let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
-    //
-    //nnetwork.train(inputs, targets, 10000);
-    //
-    //// test the neural network
-    //println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 0.0])));
-    //println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![0.0, 1.0])));
-    //println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 0.0])));
-    //println!("{:?}", nnetwork.feed_forward(Matrix::from(vec![1.0, 1.0])));
+    /*
+    // XOR PoC
+    let inputs = vec![
+        vec![0.0, 0.0],
+        vec![0.0, 1.0],
+        vec![1.0, 0.0],
+        vec![1.0, 1.0],
+    ];
+
+    // target values
+    let targets = vec![vec![0.0], vec![1.0], vec![1.0], vec![0.0]];
+
+    // train network
+    let mut nnetwork = NNetwork::new(vec![2, 3, 1], SIGMOID, 0.5);
+
+    nnetwork.train(inputs, targets, 10000);
+
+    // test the neural network
+    println!(
+        "0 XOR 0 = {:?}",
+        nnetwork.feed_forward(Matrix::from(vec![0.0, 0.0])).data
+    );
+    println!(
+        "0 XOR 1 = {:?}",
+        nnetwork.feed_forward(Matrix::from(vec![0.0, 1.0])).data
+    );
+    println!(
+        "1 XOR 0 = {:?}",
+        nnetwork.feed_forward(Matrix::from(vec![1.0, 0.0])).data
+    );
+    println!(
+        "1 XOR 1 = {:?}",
+        nnetwork.feed_forward(Matrix::from(vec![1.0, 1.0])).data
+    );
+    */
 }
